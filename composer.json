@@ -1,0 +1,16 @@
+{
+    "name": "casa/alerta_vecinal",
+    "autoload": {
+        "psr-4": {
+            "Casa\\AlertaVecinal\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "H.R"
+        }
+    ],
+    "require": {
+        "pusher/pusher-php-server": "^7.2"
+    }
+}
