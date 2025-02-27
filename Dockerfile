@@ -10,20 +10,17 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Instala extensiones necesarias para Pusher si las usas en PHP
 RUN docker-php-ext-install mbstring
 
 WORKDIR /var/www/html
 COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
-# Activa errores para depurar
 RUN echo "display_errors = On" >> /usr/local/etc/php/php.ini
 RUN echo "display_startup_errors = On" >> /usr/local/etc/php/php.ini
 RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/php.ini
 
-# Expone el puerto dinámico de Render
 EXPOSE ${PORT:-8000}
 
-# Usa el servidor integrado con un router para archivos estáticos
-CMD ["php", "-S", "0.0.0.0:${PORT:-8000}", "-t", "/var/www/html"]
+# Usa el formato shell para interpretar la variable PORT
+CMD php -S 0.0.0.0:${PORT:-8000} -t /var/www/html
