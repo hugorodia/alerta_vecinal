@@ -1,7 +1,5 @@
-# Usa una imagen oficial de PHP con FPM (FastCGI Process Manager)
 FROM php:8.2-fpm
 
-# Instala dependencias del sistema y Composer
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,17 +10,14 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Establece el directorio de trabajo
 WORKDIR /var/www/html
-
-# Copia los archivos del proyecto
 COPY . .
-
-# Instala las dependencias de Composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Expone el puerto 8000 (Render lo usará)
-EXPOSE 8000
+# Activa errores para depurar
+RUN echo "display_errors = On" >> /usr/local/etc/php/php.ini
+RUN echo "display_startup_errors = On" >> /usr/local/etc/php/php.ini
+RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/php.ini
 
-# Comando para iniciar el servidor PHP
-CMD ["php", "-S", "0.0.0.0:8000", "index.php"]
+# Usa el puerto asignado por Render
+CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8000} index.php"]
