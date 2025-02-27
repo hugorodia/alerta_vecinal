@@ -4,10 +4,10 @@ require 'vendor/autoload.php';
 use Pusher\Pusher;
 
 $pusher = new Pusher(
-    getenv('PUSHER_KEY'),
-    getenv('PUSHER_SECRET'),
-    getenv('PUSHER_APP_ID'),
-    ['cluster' => getenv('PUSHER_CLUSTER'), 'useTLS' => true]
+    getenv('2c963fd334205de07cf7'),
+    getenv('01b70984e3e2a14351e1'),
+    getenv('1941024'),
+    ['cluster' => getenv('us2'), 'useTLS' => true]
 );
 
 header('Content-Type: application/json');
