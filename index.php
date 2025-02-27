@@ -39,7 +39,11 @@
         <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>
     </footer>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="script.js?v=1.0"></script>
     <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+    <script>
+        window.PUSHER_KEY = <?php echo json_encode(getenv('PUSHER_KEY')); ?>;
+        window.PUSHER_CLUSTER = <?php echo json_encode(getenv('PUSHER_CLUSTER')); ?>;
+    </script>
+    <script src="script.js?v=1.0"></script>
 </body>
 </html>

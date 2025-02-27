@@ -1,32 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953'; // Reemplaza con tu clave de OpenCage
+    const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker;
 
-    // Inicializar el mapa
-    function initMap(lat = -34.6037, lng = -58.3816) { // Buenos Aires como ubicación por defecto
+    function initMap(lat = -34.6037, lng = -58.3816) {
         if (!map) {
             map = L.map('map').setView([lat, lng], 13);
-
-            // Agregar capa de mapa de OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
+                attribution: '© OpenStreetMap contributors'
             }).addTo(map);
         }
 
-        // Configuración de Pusher
-const pusher = new Pusher('2c963fd334205de07cf7', {
-    cluster: 'us2',
-    encrypted: true
-});
+        // Usa la clave de Pusher desde una variable global inyectada por PHP
+        const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', {
+            cluster: window.PUSHER_CLUSTER || 'us2',
+            encrypted: true
+        });
+        const channel = pusher.subscribe('alert-channel');
+        channel.bind('new-alert', function(data) {
+            console.log("Nueva alerta recibida:", data);
+            addAlertToMap(data);
+        });
 
-// Escuchar el canal de alertas
-const channel = pusher.subscribe('alert-channel');
-channel.bind('new-alert', function(data) {
-    console.log("Nueva alerta recibida:", data);
-    addAlertToMap(data);
-});
-
-        // Obtener ubicación del usuario
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -44,7 +38,6 @@ channel.bind('new-alert', function(data) {
         }
     }
 
-    // Enviar alerta al backend
     async function sendAlert(tipo, latitud, longitud, radio) {
         const url = 'functions.php';
         try {
@@ -75,7 +68,6 @@ channel.bind('new-alert', function(data) {
         }
     }
 
-    // Añadir una alerta al mapa
     function addAlertToMap(alert) {
         const marker = L.marker([alert.latitud, alert.longitud]).addTo(map);
         marker.bindPopup(`
@@ -85,7 +77,6 @@ channel.bind('new-alert', function(data) {
         `).openPopup();
     }
 
-    // Obtener alertas cercanas desde el backend
     async function fetchNearbyAlerts(latitud, longitud, radio) {
         const url = 'functions.php';
         try {
@@ -114,35 +105,27 @@ channel.bind('new-alert', function(data) {
         }
     }
 
-    // Manejar el envío del formulario de alertas
     const form = document.getElementById('send-alert-form');
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const tipo = document.getElementById('alert-type')?.value;
             const radio = parseInt(document.getElementById('alert-radius')?.value, 10);
-
             if (!userMarker) {
                 alert("No se ha detectado tu ubicación. Por favor, habilita la geolocación.");
                 return;
             }
-
             const latitud = userMarker.getLatLng().lat;
             const longitud = userMarker.getLatLng().lng;
-
             await sendAlert(tipo, latitud, longitud, radio);
         });
     }
 
-    // Inicializar el mapa al cargar la página
     initMap();
-
-    // Obtener alertas cercanas al cargar la página
     if (userMarker) {
         const latitud = userMarker.getLatLng().lat;
         const longitud = userMarker.getLatLng().lng;
-        const radio = 5; // Radio predeterminado en km
+        const radio = 5;
         fetchNearbyAlerts(latitud, longitud, radio);
     }
 });
