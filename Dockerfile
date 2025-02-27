@@ -22,5 +22,4 @@ RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/php.ini
 
 EXPOSE ${PORT:-8000}
 
-# Usa el formato shell para interpretar la variable PORT
-CMD php -S 0.0.0.0:${PORT:-8000} -t /var/www/html
+CMD php -S 0.0.0.0:${PORT:-8000} /var/www/html/index.php
