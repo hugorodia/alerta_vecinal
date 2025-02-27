@@ -1,8 +1,5 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
-echo "Iniciando carga de Alerta Vecinal...\n"; // Punto 1
-ob_flush(); // Forzar envío inicial
-flush();
+// index.php - Página principal de la aplicación
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -14,7 +11,6 @@ flush();
     <meta name="author" content="Tu Nombre">
     <title>Alerta Vecinal - Aplicación de Seguridad</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <?php echo "Cargando estilos...\n"; // Punto 2 ?>
     <link rel="stylesheet" href="style.css?v=1.0">
 </head>
 <body>
@@ -42,19 +38,12 @@ flush();
     <footer class="footer">
         <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>
     </footer>
-    <?php echo "Cargando scripts...\n"; // Punto 3 ?>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
     <script>
         window.PUSHER_KEY = <?php echo json_encode(getenv('PUSHER_KEY')); ?>;
         window.PUSHER_CLUSTER = <?php echo json_encode(getenv('PUSHER_CLUSTER')); ?>;
-        console.log("Pusher key:", window.PUSHER_KEY); // Depuración en consola
     </script>
     <script src="script.js?v=1.0"></script>
-    <?php
-    echo "Página cargada completamente.\n"; // Punto 4
-    ob_flush();
-    flush();
-    ?>
 </body>
 </html>

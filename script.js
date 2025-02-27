@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }).addTo(map);
         }
 
-        // Usa la clave de Pusher desde una variable global inyectada por PHP
         const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', {
             cluster: window.PUSHER_CLUSTER || 'us2',
             encrypted: true

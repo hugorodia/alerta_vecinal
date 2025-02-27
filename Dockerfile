@@ -1,6 +1,5 @@
 FROM php:8.2-fpm
 
-# Limpia el caché de apt-get y actualiza
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
