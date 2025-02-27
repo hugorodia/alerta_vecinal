@@ -1,5 +1,4 @@
 <?php
-// functions.php - Lógica del backend para Render
 require 'vendor/autoload.php';
 
 use Pusher\Pusher;
