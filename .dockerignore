@@ -1,0 +1,4 @@
+vendor
+sftp-config.json
+.git
+.gitignore
