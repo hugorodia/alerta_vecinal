@@ -3,12 +3,22 @@ require 'vendor/autoload.php';
 
 use Pusher\Pusher;
 
-// Conexión a Neon (PostgreSQL)
+// Depuración de variables de entorno
+$host = getenv('DB_HOST');
+$dbname = getenv('DB_NAME');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
+error_log("DB_HOST: $host, DB_NAME: $dbname, DB_USER: $user, DB_PASS: $pass");
+
+// Construcción del DSN con más claridad
 try {
-    $dsn = "pgsql:host=" . getenv('DB_HOST') . ";dbname=" . getenv('DB_NAME') . ";user=" . getenv('DB_USER') . ";password=" . getenv('DB_PASS');
+    $dsn = "pgsql:host=$host;dbname=$dbname;user=$user;password=$pass";
+    error_log("Intentando conectar con DSN: $dsn"); // Verifica el DSN completo
     $pdo = new PDO($dsn);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    error_log("Conexión exitosa a Neon");
 } catch (PDOException $e) {
+    error_log("Error de conexión: " . $e->getMessage());
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'Error de conexión a la base de datos: ' . $e->getMessage()]);
     exit;
@@ -22,6 +32,7 @@ $pusher = new Pusher(
     ['cluster' => getenv('PUSHER_CLUSTER'), 'useTLS' => true]
 );
 
+// Resto del código sin cambios...
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -56,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             echo json_encode(['success' => true, 'alert' => $alertData]);
         } catch (Exception $e) {
+            error_log("Error al registrar alerta: " . $e->getMessage());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     } elseif ($action === 'obtenerAlertasCercanas') {
@@ -84,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             echo json_encode(['success' => true, 'alerts' => $alerts]);
         } catch (Exception $e) {
+            error_log("Error al obtener alertas: " . $e->getMessage());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     } else {
