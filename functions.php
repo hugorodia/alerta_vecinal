@@ -4,7 +4,7 @@ require 'vendor/autoload.php';
 use Pusher\Pusher;
 
 header('Content-Type: application/json');
-error_log("Iniciando functions.php - Versión básica para prueba 503");
+error_log("Iniciando functions.php - Versión de prueba para confirmar despliegue");
 
-echo json_encode(['success' => true, 'message' => 'Servidor funcionando sin base de datos']);
+echo json_encode(['success' => true, 'message' => 'VERSIÓN DE PRUEBA CONFIRMADA']);
 exit;
