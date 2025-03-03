@@ -18,6 +18,7 @@ RUN echo "display_errors = On" >> /usr/local/etc/php/php.ini
 RUN echo "display_startup_errors = On" >> /usr/local/etc/php/php.ini
 RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/php.ini
 
-EXPOSE ${PORT:-8000}
+# Exponer el puerto dinámico asignado por Render
+EXPOSE ${PORT:-10000}
 
-CMD php -S 0.0.0.0:${PORT:-8000} -t /var/www/html
+CMD php -S 0.0.0.0:${PORT:-10000} -t /var/www/html
