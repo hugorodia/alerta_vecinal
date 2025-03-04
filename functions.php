@@ -20,15 +20,15 @@ $pusher = new Pusher(
 );
 error_log("Pusher configurado con key: " . getenv('key'));
 
-// Conexión a Neon
-$host = getenv('DB_HOST') ?: 'missing_host';
-$dbname = getenv('DB_NAME') ?: 'missing_dbname';
-$user = getenv('DB_USER') ?: 'missing_user';
-$pass = getenv('DB_PASS') ?: 'missing_pass';
-error_log("DB_HOST: '$host', DB_NAME: '$dbname', DB_USER: '$user', DB_PASS: '$pass'");
+// Conexión a Neon usando variables PG*
+$host = getenv('PGHOST') ?: 'missing_host';
+$dbname = getenv('PGDATABASE') ?: 'missing_dbname';
+$user = getenv('PGUSER') ?: 'missing_user';
+$pass = getenv('PGPASSWORD') ?: 'missing_pass';
+error_log("PGHOST: '$host', PGDATABASE: '$dbname', PGUSER: '$user', PGPASSWORD: '$pass'");
 
 try {
-    $dsn = "pgsql:host=$host;dbname=$dbname;user=$user;password=$pass";
+    $dsn = "pgsql:host=$host;dbname=$dbname;user=$user;password=$pass;sslmode=require";
     error_log("Intentando conectar con DSN: '$dsn'");
     $pdo = new PDO($dsn);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
