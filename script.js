@@ -29,11 +29,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         map.removeLayer(userMarker);
                     }
                     userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+                    // Cargar alertas cercanas después de obtener la posición
+                    fetchNearbyAlerts(latitude, longitude, 10); // Ajusta el radio si quieres
                 },
                 () => {
                     alert("No se pudo obtener tu ubicación. Usando ubicación por defecto.");
+                    // Opcional: cargar alertas con ubicación por defecto
+                    fetchNearbyAlerts(lat, lng, 10);
                 }
             );
+        } else {
+            // Si no hay geolocalización, usar ubicación por defecto
+            fetchNearbyAlerts(lat, lng, 10);
         }
     }
 
@@ -121,10 +128,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initMap();
-    if (userMarker) {
-        const latitud = userMarker.getLatLng().lat;
-        const longitud = userMarker.getLatLng().lng;
-        const radio = 5;
-        fetchNearbyAlerts(latitud, longitud, radio);
-    }
 });
