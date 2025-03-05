@@ -10,7 +10,7 @@
     <meta name="keywords" content="alertas vecinales, seguridad, robo, asalto, actividad sospechosa, app seguridad">
     <meta name="author" content="Tu Nombre">
     <title>Alerta Vecinal - Aplicación de Seguridad</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css?v=1.0">
 </head>
