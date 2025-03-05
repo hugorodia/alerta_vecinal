@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Insertar en la base de datos
-            $stmt = $pdo->prepare("INSERT INTO alertas (tipo, latitud, longitud, radio, fecha) VALUES (?, ?, ?, ?, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO alertas (tipo, latitud, longitud, radio, fecha, visible) VALUES (?, ?, ?, ?, NOW(), TRUE)");
             $stmt->execute([$tipo, $latitud, $longitud, $radio]);
             $alert_id = $pdo->lastInsertId('alertas_id_seq');
 
@@ -97,6 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE (6371 * acos(cos(radians(?)) * cos(radians(latitud)) 
                        * cos(radians(longitud) - radians(?)) + sin(radians(?)) 
                        * sin(radians(latitud)))) <= ?
+                AND fecha >= NOW() - INTERVAL '24 hours'
+                AND visible = TRUE
                 ORDER BY fecha DESC
             ");
             $stmt->execute([$latitud, $longitud, $latitud, $latitud, $longitud, $latitud, $radio]);
@@ -106,6 +108,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => true, 'alerts' => $alerts]);
         } catch (Exception $e) {
             error_log("Error al obtener alertas: " . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    } elseif ($action === 'eliminarAlerta') {
+        try {
+            $alert_id = $data['id'] ?? null;
+            if ($alert_id === null) {
+                throw new Exception('Falta el ID de la alerta');
+            }
+
+            $stmt = $pdo->prepare("UPDATE alertas SET visible = FALSE WHERE id = ?");
+            $stmt->execute([$alert_id]);
+            error_log("Alerta $alert_id marcada como no visible");
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            error_log("Error al eliminar alerta: " . $e->getMessage());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     } else {

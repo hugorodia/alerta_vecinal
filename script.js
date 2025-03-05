@@ -30,16 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
                     // Cargar alertas cercanas después de obtener la posición
-                    fetchNearbyAlerts(latitude, longitude, 10); // Ajusta el radio si quieres
+                    fetchNearbyAlerts(latitude, longitude, 10);
                 },
                 () => {
                     alert("No se pudo obtener tu ubicación. Usando ubicación por defecto.");
-                    // Opcional: cargar alertas con ubicación por defecto
                     fetchNearbyAlerts(lat, lng, 10);
                 }
             );
         } else {
-            // Si no hay geolocalización, usar ubicación por defecto
+            alert("Geolocalización no soportada. Usando ubicación por defecto.");
             fetchNearbyAlerts(lat, lng, 10);
         }
     }
@@ -76,11 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addAlertToMap(alert) {
         const marker = L.marker([alert.latitud, alert.longitud]).addTo(map);
-        marker.bindPopup(`
+        const popupContent = `
             <b>Tipo:</b> ${alert.tipo}<br>
             <b>Radio:</b> ${alert.radio} km<br>
-            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}
-        `).openPopup();
+            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+            <button onclick="deleteAlert(${alert.id})">Eliminar</button>
+        `;
+        marker.bindPopup(popupContent).openPopup();
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
@@ -111,6 +112,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function deleteAlert(alertId) {
+        try {
+            const response = await fetch('functions.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'eliminarAlerta',
+                    id: alertId
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert("Alerta eliminada del mapa.");
+                location.reload(); // Recargar para actualizar el mapa
+            } else {
+                alert("Error al eliminar: " + result.error);
+            }
+        } catch (error) {
+            console.error("Error al eliminar alerta:", error);
+            alert("Ocurrió un error al eliminar la alerta.");
+        }
+    }
+
     const form = document.getElementById('send-alert-form');
     if (form) {
         form.addEventListener('submit', async (e) => {
@@ -129,3 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initMap();
 });
+
+// Hacer deleteAlert accesible globalmente
+window.deleteAlert = deleteAlert;
