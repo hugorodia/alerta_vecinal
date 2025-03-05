@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         map.removeLayer(userMarker);
                     }
                     userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
-                    // Cargar alertas cercanas después de obtener la posición
                     fetchNearbyAlerts(latitude, longitude, 10);
                 },
                 () => {
@@ -75,18 +74,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addAlertToMap(alert) {
         const marker = L.marker([alert.latitud, alert.longitud]).addTo(map);
-        const popupContent = `
+        const popupContent = document.createElement('div');
+        popupContent.innerHTML = `
             <b>Tipo:</b> ${alert.tipo}<br>
             <b>Radio:</b> ${alert.radio} km<br>
             <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-            <button onclick="deleteAlert(${alert.id})">Eliminar</button>
+            <button id="delete-btn-${alert.id}">Eliminar</button>
         `;
         marker.bindPopup(popupContent).openPopup();
+        marker.on('popupopen', () => {
+            document.getElementById(`delete-btn-${alert.id}`).addEventListener('click', () => {
+                deleteAlert(alert.id);
+            });
+        });
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
         const url = 'functions.php';
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de espera máxima
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -97,8 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     latitud,
                     longitud,
                     radio
-                })
+                }),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             const result = await response.json();
             if (result.success) {
@@ -108,7 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Error al obtener alertas cercanas:", error);
-            alert("Ocurrió un error al obtener alertas cercanas. Por favor, intenta nuevamente.");
+            if (error.name === 'AbortError') {
+                alert("La carga de alertas tomó demasiado tiempo. Por favor, recarga la página.");
+            } else {
+                alert("Ocurrió un error al obtener alertas cercanas. Por favor, intenta nuevamente.");
+            }
         }
     }
 
@@ -125,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (result.success) {
                 alert("Alerta eliminada del mapa.");
-                location.reload(); // Recargar para actualizar el mapa
+                location.reload();
             } else {
                 alert("Error al eliminar: " + result.error);
             }
@@ -153,6 +166,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initMap();
 });
-
-// Hacer deleteAlert accesible globalmente
-window.deleteAlert = deleteAlert;
