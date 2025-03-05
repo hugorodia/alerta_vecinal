@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     latitud,
                     longitud,
                     radio
-                COURT})
+                })
             });
 
             const result = await response.json();
