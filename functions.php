@@ -56,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Faltan coordenadas');
             }
 
-            // Insertar en la base de datos
             $stmt = $pdo->prepare("INSERT INTO alertas (tipo, latitud, longitud, radio, fecha, visible) VALUES (?, ?, ?, ?, NOW(), TRUE)");
             $stmt->execute([$tipo, $latitud, $longitud, $radio]);
             $alert_id = $pdo->lastInsertId('alertas_id_seq');
@@ -88,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Faltan coordenadas');
             }
 
+            // Depuración: Registrar la fecha límite en UTC-3
+            $fechaLimite = $pdo->query("SELECT NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires' - INTERVAL '24 hours'")->fetchColumn();
+            error_log("Fecha límite para alertas (UTC-3): " . $fechaLimite);
+
             $stmt = $pdo->prepare("
                 SELECT id, tipo, latitud, longitud, radio, fecha,
                        (6371 * acos(cos(radians(?)) * cos(radians(latitud)) 
@@ -97,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE (6371 * acos(cos(radians(?)) * cos(radians(latitud)) 
                        * cos(radians(longitud) - radians(?)) + sin(radians(?)) 
                        * sin(radians(latitud)))) <= ?
-                AND fecha >= NOW() - INTERVAL '24 hours'
+                AND fecha >= NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires' - INTERVAL '24 hours'
                 AND visible = TRUE
                 ORDER BY fecha DESC
             ");
