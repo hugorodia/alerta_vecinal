@@ -9,8 +9,9 @@
     <meta name="description" content="Aplicación de alertas de seguridad para residentes de barrios o localidades. Mantente informado sobre situaciones de peligro en tiempo real.">
     <meta name="keywords" content="alertas vecinales, seguridad, robo, asalto, actividad sospechosa, app seguridad">
     <meta name="author" content="Tu Nombre">
-    <title>Alerta Vecinal - Aplicación de Seguridad</title>
+    🙂 <title>Alerta Vecinal - Aplicación de Seguridad</title>
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico?v=1">
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css?v=1.0">
 </head>
