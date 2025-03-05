@@ -87,9 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Faltan coordenadas');
             }
 
-            // Calcular fecha límite explícitamente
-            $fechaLimite = $pdo->query("SELECT NOW() - INTERVAL '27 hours'")->fetchColumn(); // 24h + 3h para UTC-3
-            error_log("Fecha límite ajustada (UTC-3 como UTC): " . $fechaLimite);
+            // Calcular fecha límite en UTC ajustada a UTC-3
+            $fechaLimite = $pdo->query("SELECT (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours' + INTERVAL '3 hours'")->fetchColumn();
+            error_log("Fecha límite en UTC (ajustada para UTC-3): " . $fechaLimite);
 
             $stmt = $pdo->prepare("
                 SELECT id, tipo, latitud, longitud, radio, fecha,
