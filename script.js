@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     latitud,
                     longitud,
                     radio
-                })
+                COURT})
             });
 
             const result = await response.json();
@@ -73,7 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addAlertToMap(alert) {
-        const marker = L.marker([alert.latitud, alert.longitud]).addTo(map);
+        const alertIcon = L.icon({
+            iconUrl: '/alert-icon.png', // Ruta al ícono estático
+            iconSize: [32, 32],         // Tamaño del ícono
+            iconAnchor: [16, 32],       // Punto de anclaje
+            popupAnchor: [0, -32]       // Punto del popup
+        });
+        const marker = L.marker([alert.latitud, alert.longitud], { icon: alertIcon }).addTo(map);
         const popupContent = document.createElement('div');
         popupContent.innerHTML = `
             <video width="128" height="128" autoplay loop muted>
