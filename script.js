@@ -76,6 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const marker = L.marker([alert.latitud, alert.longitud]).addTo(map);
         const popupContent = document.createElement('div');
         popupContent.innerHTML = `
+            <video width="128" height="128" autoplay loop muted>
+                <source src="/alert-animation.mp4" type="video/mp4">
+                Tu navegador no soporta video.
+            </video>
+            <br>
             <b>Tipo:</b> ${alert.tipo}<br>
             <b>Radio:</b> ${alert.radio} km<br>
             <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
@@ -93,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = 'functions.php';
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de espera máxima
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
