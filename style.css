@@ -28,7 +28,7 @@
 }
 
 .map {
-    height: 500px;
+    height: 400px; /* Reducido de 500px a 400px para ser más rectangular */
     margin: 0 5%; /* Márgenes laterales del 5% */
 }
 
@@ -43,7 +43,7 @@
 }
 
 .alert-button {
-    background-color: #007bff;
+    background-color: #dc3545; /* Rojo vibrante como alert-icon.png */
     color: white;
     border: none;
     padding: 10px 20px;
@@ -52,7 +52,7 @@
 }
 
 .alert-button:hover {
-    background-color: #0056b3;
+    background-color: #c82333; /* Hover rojo más oscuro */
 }
 
 .notifications {
@@ -64,7 +64,7 @@
 }
 
 .history-button {
-    background-color: #28a745;
+    background-color: #343a40; /* Gris oscuro elegante */
     color: white;
     border: none;
     padding: 10px 20px;
@@ -73,7 +73,7 @@
 }
 
 .history-button:hover {
-    background-color: #218838;
+    background-color: #495057; /* Hover gris más claro */
 }
 
 .history-controls label {

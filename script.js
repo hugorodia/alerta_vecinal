@@ -226,9 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showNotification(alert) {
+        console.log("Intentando mostrar notificación...");
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
-                console.log("Disparando notificación para:", alert);
+                console.log("Notificación permitida, disparando:", alert);
                 new Notification('Nueva Alerta', {
                     body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
                     icon: '/public/favicon.ico'
@@ -241,14 +242,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
                             icon: '/public/favicon.ico'
                         });
+                    } else {
+                        console.log("Permiso denegado por el usuario");
                     }
                 });
             } else {
                 console.log("Notificaciones denegadas previamente");
             }
+        } else {
+            console.log("API de Notificaciones no soportada en este navegador");
         }
 
         if (document.getElementById('enable-notifications').checked && 'vibrate' in navigator) {
+            console.log("Vibrando...");
             navigator.vibrate([200, 100, 200]);
         }
     }
