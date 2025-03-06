@@ -129,8 +129,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'obtenerHistorialAlertas') {
         try {
-            $stmt = $pdo->prepare("SELECT id, tipo, latitud, longitud, radio, fecha, visible FROM alertas ORDER BY fecha DESC");
-            $stmt->execute();
+            $fechaInicio = $data['fechaInicio'] ?? null;
+            $fechaFin = $data['fechaFin'] ?? null;
+            $query = "SELECT id, tipo, latitud, longitud, radio, fecha, visible FROM alertas";
+            $params = [];
+
+            if ($fechaInicio && $fechaFin) {
+                $query .= " WHERE fecha BETWEEN ? AND ?";
+                $params = [$fechaInicio, $fechaFin];
+            }
+
+            $query .= " ORDER BY fecha DESC";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
             $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             error_log("Historial de alertas obtenido: " . json_encode($alerts));

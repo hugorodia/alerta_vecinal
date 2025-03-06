@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
-    let map, userMarker;
+    let map, userMarker, historyMarkers = [];
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         if (!map) {
@@ -18,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
         channel.bind('new-alert', function(data) {
             console.log("Nueva alerta recibida:", data);
             addAlertToMap(data);
-            fetchAlertHistory(); // Actualizar historial al recibir nueva alerta
+            if (document.getElementById('enable-notifications').checked) {
+                showNotification(data);
+            }
         });
 
         if (navigator.geolocation) {
@@ -40,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert("Geolocalización no soportada. Usando ubicación por defecto.");
             fetchNearbyAlerts(lat, lng, 10);
+        }
+
+        // Solicitar permiso para notificaciones
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
         }
     }
 
@@ -65,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Alerta enviada correctamente.");
                 addAlertToMap(result.alert);
             } else {
-                alert("Error al enviar la alerta: " . result.error);
+                alert("Error al enviar la alerta: " + result.error);
             }
         } catch (error) {
             console.error("Error al enviar la alerta:", error);
@@ -151,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 alert("Alerta eliminada del mapa.");
                 location.reload();
-                fetchAlertHistory(); // Actualizar historial tras eliminar
             } else {
                 alert("Error al eliminar: " + result.error);
             }
@@ -163,31 +169,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAlertHistory() {
         const url = 'functions.php';
+        const fechaInicio = document.getElementById('history-start').value;
+        const fechaFin = document.getElementById('history-end').value;
+        const body = { action: 'obtenerHistorialAlertas' };
+        if (fechaInicio && fechaFin) {
+            body.fechaInicio = fechaInicio + ' 00:00:00';
+            body.fechaFin = fechaFin + ' 23:59:59';
+        }
+
         try {
+            // Limpiar marcadores previos del historial
+            historyMarkers.forEach(marker => map.removeLayer(marker));
+            historyMarkers = [];
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'obtenerHistorialAlertas' })
+                body: JSON.stringify(body)
             });
             const result = await response.json();
             if (result.success) {
-                const tbody = document.querySelector('#alert-table tbody');
-                tbody.innerHTML = '';
                 result.alerts.forEach(alert => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${alert.id}</td>
-                        <td>${alert.tipo}</td>
-                        <td>${new Date(alert.fecha).toLocaleString()}</td>
-                        <td>${alert.visible ? 'Sí' : 'No'}</td>
-                    `;
-                    tbody.appendChild(row);
+                    const marker = L.marker([alert.latitud, alert.longitud], {
+                        icon: L.icon({
+                            iconUrl: '/alert-icon.png',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        })
+                    }).addTo(map);
+                    marker.bindPopup(`
+                        <b>Tipo:</b> ${alert.tipo}<br>
+                        <b>Radio:</b> ${alert.radio} km<br>
+                        <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+                        <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
+                    `);
+                    historyMarkers.push(marker);
                 });
             } else {
                 console.error("Error al obtener historial:", result.error);
             }
         } catch (error) {
             console.error("Error al cargar historial:", error);
+        }
+    }
+
+    function showNotification(alert) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Nueva Alerta', {
+                body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
+                icon: '/public/favicon.ico'
+                // No especificamos sonido, usa el predeterminado del dispositivo
+            });
+        }
+
+        // Vibración opcional si el checkbox está activado
+        if (document.getElementById('enable-notifications').checked && 'vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]); // Vibración: 200ms on, 100ms off, 200ms on
         }
     }
 
@@ -207,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    document.getElementById('show-history-btn').addEventListener('click', fetchAlertHistory);
+
     initMap();
-    fetchAlertHistory(); // Cargar historial al iniciar
 });

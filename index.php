@@ -19,6 +19,9 @@
     <header class="header">
         <h1>Alerta Vecinal</h1>
         <p>Tu seguridad es nuestra prioridad</p>
+        <div class="beta-notice">
+            <p>Versión Beta: Esta aplicación está en fase de prueba con un servidor gratuito, por lo que puede haber lentitud o interrupciones temporales. ¡Agradecemos tu comprensión mientras perfeccionamos la experiencia!</p>
+        </div>
     </header>
     <main class="container">
         <div id="map" class="map"></div>
@@ -35,20 +38,16 @@
                 <input type="number" id="alert-radius" name="alert-radius" min="1" max="10" value="5" required>
                 <button type="submit" class="alert-button">Enviar Alerta</button>
             </form>
-        </section>
-        <section class="alert-history">
-            <h2>Historial de Alertas</h2>
-            <table id="alert-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Tipo</th>
-                        <th>Fecha</th>
-                        <th>Visible</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div class="notifications">
+                <label><input type="checkbox" id="enable-notifications"> Activar notificaciones (sonido/vibración)</label>
+            </div>
+            <div class="history-controls">
+                <button id="show-history-btn" class="history-button">Ver Historial</button>
+                <label for="history-start">Desde:</label>
+                <input type="date" id="history-start" disabled>
+                <label for="history-end">Hasta:</label>
+                <input type="date" id="history-end" disabled>
+            </div>
         </section>
     </main>
     <footer class="footer">
