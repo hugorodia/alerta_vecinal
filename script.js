@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
-    let map, userMarker, historyMarkers = [];
+    let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         if (!map) {
@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.getElementById('enable-notifications').checked) {
                 showNotification(data);
             }
+            updateAlertCount();
         });
 
         if (navigator.geolocation) {
@@ -44,9 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchNearbyAlerts(lat, lng, 10);
         }
 
-        // Solicitar permiso para notificaciones
+        // Solicitar permiso para notificaciones al cargar
         if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
+            Notification.requestPermission().then(permission => {
+                console.log("Estado del permiso de notificaciones:", permission);
+            });
         }
     }
 
@@ -167,65 +170,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function fetchAlertHistory() {
-        const url = 'functions.php';
-        const fechaInicio = document.getElementById('history-start').value;
-        const fechaFin = document.getElementById('history-end').value;
-        const body = { action: 'obtenerHistorialAlertas' };
-        if (fechaInicio && fechaFin) {
-            body.fechaInicio = fechaInicio + ' 00:00:00';
-            body.fechaFin = fechaFin + ' 23:59:59';
-        }
+    async function toggleAlertHistory() {
+        const historyBtn = document.getElementById('show-history-btn');
+        if (!historyVisible) {
+            const url = 'functions.php';
+            const fechaInicio = document.getElementById('history-start').value;
+            const fechaFin = document.getElementById('history-end').value;
+            const body = { action: 'obtenerHistorialAlertas' };
+            if (fechaInicio && fechaFin) {
+                body.fechaInicio = fechaInicio + ' 00:00:00';
+                body.fechaFin = fechaFin + ' 23:59:59';
+            }
 
-        try {
-            // Limpiar marcadores previos del historial
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    historyMarkers.forEach(marker => map.removeLayer(marker));
+                    historyMarkers = [];
+                    result.alerts.forEach(alert => {
+                        const marker = L.marker([alert.latitud, alert.longitud], {
+                            icon: L.icon({
+                                iconUrl: '/alert-icon.png',
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 32],
+                                popupAnchor: [0, -32]
+                            })
+                        }).addTo(map);
+                        marker.bindPopup(`
+                            <b>Tipo:</b> ${alert.tipo}<br>
+                            <b>Radio:</b> ${alert.radio} km<br>
+                            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+                            <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
+                        `);
+                        historyMarkers.push(marker);
+                    });
+                    historyBtn.textContent = 'Ocultar Historial';
+                    historyVisible = true;
+                } else {
+                    console.error("Error al obtener historial:", result.error);
+                }
+            } catch (error) {
+                console.error("Error al cargar historial:", error);
+            }
+        } else {
             historyMarkers.forEach(marker => map.removeLayer(marker));
             historyMarkers = [];
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const result = await response.json();
-            if (result.success) {
-                result.alerts.forEach(alert => {
-                    const marker = L.marker([alert.latitud, alert.longitud], {
-                        icon: L.icon({
-                            iconUrl: '/alert-icon.png',
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 32],
-                            popupAnchor: [0, -32]
-                        })
-                    }).addTo(map);
-                    marker.bindPopup(`
-                        <b>Tipo:</b> ${alert.tipo}<br>
-                        <b>Radio:</b> ${alert.radio} km<br>
-                        <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-                        <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
-                    `);
-                    historyMarkers.push(marker);
-                });
-            } else {
-                console.error("Error al obtener historial:", result.error);
-            }
-        } catch (error) {
-            console.error("Error al cargar historial:", error);
+            historyBtn.textContent = 'Ver Historial';
+            historyVisible = false;
         }
     }
 
     function showNotification(alert) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('Nueva Alerta', {
-                body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
-                icon: '/public/favicon.ico'
-                // No especificamos sonido, usa el predeterminado del dispositivo
-            });
+        if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+                console.log("Disparando notificación para:", alert);
+                new Notification('Nueva Alerta', {
+                    body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
+                    icon: '/public/favicon.ico'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log("Permiso concedido ahora, disparando notificación");
+                        new Notification('Nueva Alerta', {
+                            body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
+                            icon: '/public/favicon.ico'
+                        });
+                    }
+                });
+            } else {
+                console.log("Notificaciones denegadas previamente");
+            }
         }
 
-        // Vibración opcional si el checkbox está activado
         if (document.getElementById('enable-notifications').checked && 'vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]); // Vibración: 200ms on, 100ms off, 200ms on
+            navigator.vibrate([200, 100, 200]);
+        }
+    }
+
+    function updateAlertCount() {
+        alertCount++;
+        const counter = document.getElementById('alert-counter') || document.createElement('span');
+        counter.id = 'alert-counter';
+        counter.textContent = alertCount;
+        counter.style.backgroundColor = 'red';
+        counter.style.color = 'white';
+        counter.style.borderRadius = '50%';
+        counter.style.padding = '2px 6px';
+        counter.style.position = 'absolute';
+        counter.style.top = '10px';
+        counter.style.right = '10px';
+        if (!document.getElementById('alert-counter')) {
+            document.body.appendChild(counter);
         }
     }
 
@@ -245,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.getElementById('show-history-btn').addEventListener('click', fetchAlertHistory);
+    document.getElementById('show-history-btn').addEventListener('click', toggleAlertHistory);
 
     initMap();
 });

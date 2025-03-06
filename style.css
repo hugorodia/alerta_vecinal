@@ -1,7 +1,7 @@
 /* style.css */
 .header {
     text-align: center;
-    background-color: #007bff;
+    background-color: #003087; /* Azul oscuro profesional */
     color: white;
     padding: 10px;
 }
@@ -24,6 +24,7 @@
     max-width: 80%;
     text-align: center;
     font-style: italic;
+    color: #333; /* Texto gris oscuro para contraste */
 }
 
 .map {
@@ -86,6 +87,7 @@
 .footer {
     text-align: center;
     padding: 10px;
-    background-color: #f8f9fa;
+    background-color: #003087; /* Igual que el header */
+    color: white;
     margin-top: 20px;
 }
