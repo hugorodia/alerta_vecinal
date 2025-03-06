@@ -36,6 +36,20 @@
                 <button type="submit" class="alert-button">Enviar Alerta</button>
             </form>
         </section>
+        <section class="alert-history">
+            <h2>Historial de Alertas</h2>
+            <table id="alert-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                        <th>Visible</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
     </main>
     <footer class="footer">
         <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>

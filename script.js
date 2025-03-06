@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         channel.bind('new-alert', function(data) {
             console.log("Nueva alerta recibida:", data);
             addAlertToMap(data);
+            fetchAlertHistory(); // Actualizar historial al recibir nueva alerta
         });
 
         if (navigator.geolocation) {
@@ -64,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Alerta enviada correctamente.");
                 addAlertToMap(result.alert);
             } else {
-                alert("Error al enviar la alerta: " + result.error);
+                alert("Error al enviar la alerta: " . result.error);
             }
         } catch (error) {
             console.error("Error al enviar la alerta:", error);
@@ -74,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addAlertToMap(alert) {
         const alertIcon = L.icon({
-            iconUrl: '/alert-icon.png', // Ruta al ícono estático
-            iconSize: [32, 32],         // Tamaño del ícono
-            iconAnchor: [16, 32],       // Punto de anclaje
-            popupAnchor: [0, -32]       // Punto del popup
+            iconUrl: '/alert-icon.png',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
         });
         const marker = L.marker([alert.latitud, alert.longitud], { icon: alertIcon }).addTo(map);
         const popupContent = document.createElement('div');
@@ -150,12 +151,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 alert("Alerta eliminada del mapa.");
                 location.reload();
+                fetchAlertHistory(); // Actualizar historial tras eliminar
             } else {
                 alert("Error al eliminar: " + result.error);
             }
         } catch (error) {
             console.error("Error al eliminar alerta:", error);
             alert("Ocurrió un error al eliminar la alerta.");
+        }
+    }
+
+    async function fetchAlertHistory() {
+        const url = 'functions.php';
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'obtenerHistorialAlertas' })
+            });
+            const result = await response.json();
+            if (result.success) {
+                const tbody = document.querySelector('#alert-table tbody');
+                tbody.innerHTML = '';
+                result.alerts.forEach(alert => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${alert.id}</td>
+                        <td>${alert.tipo}</td>
+                        <td>${new Date(alert.fecha).toLocaleString()}</td>
+                        <td>${alert.visible ? 'Sí' : 'No'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                console.error("Error al obtener historial:", result.error);
+            }
+        } catch (error) {
+            console.error("Error al cargar historial:", error);
         }
     }
 
@@ -176,4 +208,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initMap();
+    fetchAlertHistory(); // Cargar historial al iniciar
 });

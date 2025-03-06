@@ -87,7 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Faltan coordenadas');
             }
 
-            // Calcular fecha límite en UTC ajustada a UTC-3
             $fechaLimite = $pdo->query("SELECT (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours' + INTERVAL '3 hours'")->fetchColumn();
             error_log("Fecha límite en UTC (ajustada para UTC-3): " . $fechaLimite);
 
@@ -126,6 +125,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             error_log("Error al eliminar alerta: " . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    } elseif ($action === 'obtenerHistorialAlertas') {
+        try {
+            $stmt = $pdo->prepare("SELECT id, tipo, latitud, longitud, radio, fecha, visible FROM alertas ORDER BY fecha DESC");
+            $stmt->execute();
+            $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            error_log("Historial de alertas obtenido: " . json_encode($alerts));
+            echo json_encode(['success' => true, 'alerts' => $alerts]);
+        } catch (Exception $e) {
+            error_log("Error al obtener historial: " . $e->getMessage());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     } else {
