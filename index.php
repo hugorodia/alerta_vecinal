@@ -12,7 +12,7 @@
     <title>Alerta Vecinal - Aplicación de Seguridad</title>
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png?v=1">
-    <link rel="manifest" href="/manifest.json"> <!-- Añadido para PWA -->
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css?v=1.0">
 </head>
@@ -59,6 +59,14 @@
     <script>
         window.PUSHER_KEY = <?php echo json_encode(getenv('PUSHER_KEY')); ?>;
         window.PUSHER_CLUSTER = <?php echo json_encode(getenv('PUSHER_CLUSTER')); ?>;
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker registrado:', reg);
+            }).catch(err => {
+                console.log('Error al registrar Service Worker:', err);
+            });
+        }
     </script>
     <script src="script.js?v=1.0"></script>
 </body>

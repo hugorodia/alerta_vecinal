@@ -50,6 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Estado del permiso de notificaciones:", permission);
             });
         }
+
+        // Restaurar estado del checkbox desde localStorage
+        const enableNotifications = document.getElementById('enable-notifications');
+        if (localStorage.getItem('notificationsEnabled') === 'true') {
+            enableNotifications.checked = true;
+        }
+        enableNotifications.addEventListener('change', () => {
+            localStorage.setItem('notificationsEnabled', enableNotifications.checked);
+        });
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
@@ -112,16 +121,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addRadarAnimation(latitud, longitud, radio) {
-        const radiusInMeters = radio * 1000; // Convertir km a metros
+        const radiusInMeters = radio * 1000;
         const radarCircle = L.circle([latitud, longitud], {
-            color: '#ffff00', // Borde amarillo
-            fillColor: '#ffff00', // Relleno amarillo
-            fillOpacity: 0.4, // Opacidad inicial más visible (antes 0.2)
+            color: '#ffff00',
+            fillColor: '#ffff00',
+            fillOpacity: 0.4,
             radius: radiusInMeters,
             weight: 2
         }).addTo(map);
 
-        // Animación: expandirse y desvanecerse
         let opacity = 0.4;
         let scale = 1;
         const animation = setInterval(() => {
@@ -134,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 radarCircle.setStyle({ fillOpacity: opacity });
                 radarCircle.setRadius(radiusInMeters * scale);
             }
-        }, 200); // 200ms por frame, dura ~1.6 segundos
+        }, 200);
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
@@ -256,18 +264,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
                 console.log("Notificación permitida, disparando:", alert);
-                new Notification('Nueva Alerta', {
+                const notification = new Notification('Nueva Alerta', {
                     body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
                     icon: '/public/favicon.ico'
                 });
+                console.log("Notificación enviada:", notification);
             } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
                     if (permission === 'granted') {
                         console.log("Permiso concedido ahora, disparando notificación");
-                        new Notification('Nueva Alerta', {
+                        const notification = new Notification('Nueva Alerta', {
                             body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}`,
                             icon: '/public/favicon.ico'
                         });
+                        console.log("Notificación enviada tras permiso:", notification);
                     } else {
                         console.log("Permiso denegado por el usuario");
                     }
@@ -301,7 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(counter);
         }
         if ('setAppBadge' in navigator) {
-            navigator.setAppBadge(alertCount).catch(err => console.log("Error al setear badge:", err));
+            navigator.setAppBadge(alertCount).then(() => {
+                console.log("Badge actualizado a:", alertCount);
+            }).catch(err => console.log("Error al setear badge:", err));
         }
     }
 
