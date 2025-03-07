@@ -6,11 +6,11 @@ use Pusher\Pusher;
 use SendGrid\Mail\Mail;
 
 function getDBConnection() {
-    $dbname = getenv('PG_DATABASE');
-    $host = getenv('PG_HOST');
-    $port = getenv('PG_PORT') ?: '5432';
-    $username = getenv('PG_USER');
-    $password = getenv('PG_PASSWORD');
+    $dbname = getenv('PGDATABASE');  // Sin _
+    $host = getenv('PGHOST');        // Sin _
+    $port = getenv('PGPORT') ?: '5432';  // Sin _, con valor por defecto
+    $username = getenv('PGUSER');    // Sin _
+    $password = getenv('PGPASSWORD'); // Sin _
     try {
         $conn = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $username, $password);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -37,7 +37,7 @@ function getPusher() {
 
 function sendVerificationEmail($email, $nombre, $token) {
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    $fromEmail = 'tu-email@dominio.com'; // Usa el email verificado en SendGrid
+    $fromEmail = 'tu-email@dominio.com'; // Cambia esto al email verificado en SendGrid
 
     $emailObj = new Mail();
     $emailObj->setFrom($fromEmail, "Alerta Vecinal");
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $token = bin2hex(random_bytes(16)); // Token único
+                $token = bin2hex(random_bytes(16));
                 $stmt = $conn->prepare("
                     INSERT INTO users (email, nombre, apellido, password, verification_token) 
                     VALUES (:email, :nombre, :apellido, :password, :token)
@@ -205,22 +205,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'obtenerAlertasCercanas':
-            // ... (sin cambios) ...
+            $latitud = $data['latitud'] ?? '';
+            $longitud = $data['longitud'] ?? '';
+            $radio = $data['radio'] ?? '';
+            if (empty($latitud) || empty($longitud) || empty($radio)) {
+                echo json_encode(['success' => false, 'error' => 'Faltan datos requeridos']);
+                exit;
+            }
+
+            try {
+                $stmt = $conn->prepare("
+                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido
+                    FROM alerts a
+                    JOIN users u ON a.user_id = u.id
+                    WHERE ST_DWithin(
+                        ST_MakePoint(a.longitud, a.latitud)::geometry,
+                        ST_MakePoint(:longitud, :latitud)::geometry,
+                        :radio * 1000
+                    ) AND a.visible = true
+                ");
+                $stmt->execute([
+                    'latitud' => $latitud,
+                    'longitud' => $longitud,
+                    'radio' => $radio
+                ]);
+                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['success' => true, 'alerts' => $alerts]);
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
             break;
 
         case 'eliminarAlerta':
-            // ... (sin cambios, pero verifica is_verified si quieres) ...
+            session_start();
+            if (!isset($_SESSION['user_id'])) {
+                echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión']);
+                exit;
+            }
+            $id = $data['id'] ?? '';
+            if (empty($id)) {
+                echo json_encode(['success' => false, 'error' => 'ID de alerta requerido']);
+                exit;
+            }
+            try {
+                $stmt = $conn->prepare("UPDATE alerts SET visible = false WHERE id = :id AND user_id = :user_id");
+                $stmt->execute(['id' => $id, 'user_id' => $_SESSION['user_id']]);
+                if ($stmt->rowCount() > 0) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Alerta no encontrada o no tienes permiso']);
+                }
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
             break;
 
         case 'obtenerHistorialAlertas':
-            // ... (sin cambios, pero verifica is_verified si quieres) ...
+            session_start();
+            if (!isset($_SESSION['user_id'])) {
+                echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']);
+                exit;
+            }
+            $fechaInicio = $data['fechaInicio'] ?? null;
+            $fechaFin = $data['fechaFin'] ?? null;
+            try {
+                $query = "
+                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido 
+                    FROM alerts a
+                    JOIN users u ON a.user_id = u.id
+                ";
+                $params = [];
+                if ($fechaInicio && $fechaFin) {
+                    $query .= " WHERE a.fecha BETWEEN :fechaInicio AND :fechaFin";
+                    $params['fechaInicio'] = $fechaInicio;
+                    $params['fechaFin'] = $fechaFin;
+                }
+                $stmt = $conn->prepare($query);
+                $stmt->execute($params);
+                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['success' => true, 'alerts' => $alerts]);
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
             break;
 
         default:
             echo json_encode(['success' => false, 'error' => 'Acción no válida']);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
-    // Verificación de email
     $token = $_GET['token'];
     $conn = getDBConnection();
     try {
