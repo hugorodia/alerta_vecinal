@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 alert("Alerta enviada correctamente.");
                 addAlertToMap(result.alert);
-                addRadarAnimation(latitud, longitud, radio); // Añadir animación radar
+                addRadarAnimation(latitud, longitud, radio);
             } else {
                 alert("Error al enviar la alerta: " + result.error);
             }
@@ -115,14 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const radiusInMeters = radio * 1000; // Convertir km a metros
         const radarCircle = L.circle([latitud, longitud], {
             color: '#ffff00', // Borde amarillo
-            fillColor: 'rgba(255, 255, 0, 0.2)', // Relleno amarillo transparente
-            fillOpacity: 0.2,
+            fillColor: '#ffff00', // Relleno amarillo
+            fillOpacity: 0.4, // Opacidad inicial más visible (antes 0.2)
             radius: radiusInMeters,
             weight: 2
         }).addTo(map);
 
         // Animación: expandirse y desvanecerse
-        let opacity = 0.2;
+        let opacity = 0.4;
         let scale = 1;
         const animation = setInterval(() => {
             opacity -= 0.05;
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 radarCircle.setStyle({ fillOpacity: opacity });
                 radarCircle.setRadius(radiusInMeters * scale);
             }
-        }, 200); // 200ms por frame, dura ~1 segundo
+        }, 200); // 200ms por frame, dura ~1.6 segundos
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
@@ -300,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('alert-counter')) {
             document.body.appendChild(counter);
         }
-        // Intentar actualizar el badge (requiere PWA)
         if ('setAppBadge' in navigator) {
             navigator.setAppBadge(alertCount).catch(err => console.log("Error al setear badge:", err));
         }
