@@ -12,6 +12,7 @@
     <title>Alerta Vecinal - Aplicación de Seguridad</title>
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png?v=1">
+    <link rel="manifest" href="/manifest.json"> <!-- Añadido para PWA -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css?v=1.0">
 </head>

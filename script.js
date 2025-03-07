@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchNearbyAlerts(lat, lng, 10);
         }
 
-        // Solicitar permiso para notificaciones al cargar
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission().then(permission => {
                 console.log("Estado del permiso de notificaciones:", permission);
@@ -74,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 alert("Alerta enviada correctamente.");
                 addAlertToMap(result.alert);
+                addRadarAnimation(latitud, longitud, radio); // Añadir animación radar
             } else {
                 alert("Error al enviar la alerta: " + result.error);
             }
@@ -109,6 +109,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 deleteAlert(alert.id);
             });
         });
+    }
+
+    function addRadarAnimation(latitud, longitud, radio) {
+        const radiusInMeters = radio * 1000; // Convertir km a metros
+        const radarCircle = L.circle([latitud, longitud], {
+            color: '#ffff00', // Borde amarillo
+            fillColor: 'rgba(255, 255, 0, 0.2)', // Relleno amarillo transparente
+            fillOpacity: 0.2,
+            radius: radiusInMeters,
+            weight: 2
+        }).addTo(map);
+
+        // Animación: expandirse y desvanecerse
+        let opacity = 0.2;
+        let scale = 1;
+        const animation = setInterval(() => {
+            opacity -= 0.05;
+            scale += 0.1;
+            if (opacity <= 0) {
+                clearInterval(animation);
+                map.removeLayer(radarCircle);
+            } else {
+                radarCircle.setStyle({ fillOpacity: opacity });
+                radarCircle.setRadius(radiusInMeters * scale);
+            }
+        }, 200); // 200ms por frame, dura ~1 segundo
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
@@ -273,6 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
         counter.style.right = '10px';
         if (!document.getElementById('alert-counter')) {
             document.body.appendChild(counter);
+        }
+        // Intentar actualizar el badge (requiere PWA)
+        if ('setAppBadge' in navigator) {
+            navigator.setAppBadge(alertCount).catch(err => console.log("Error al setear badge:", err));
         }
     }
 
