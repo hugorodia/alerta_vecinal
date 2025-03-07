@@ -1,7 +1,7 @@
 /* style.css */
 .header {
     text-align: center;
-    background-color: #003087; /* Azul oscuro profesional */
+    background-color: #003087;
     color: white;
     padding: 10px;
 }
@@ -24,26 +24,34 @@
     max-width: 80%;
     text-align: center;
     font-style: italic;
-    color: #333; /* Texto gris oscuro para contraste */
+    color: #333;
 }
 
 .map {
-    height: 400px; /* Reducido de 500px a 400px para ser más rectangular */
-    margin: 0 5%; /* Márgenes laterales del 5% */
+    height: 400px;
+    margin: 0 5%;
 }
 
-.alert-form {
+.alert-form, .auth-form {
     margin: 20px 5%;
     text-align: center;
 }
 
-.alert-form label {
+.alert-form label, .auth-form label {
     display: block;
     margin: 5px 0;
 }
 
+.alert-form input, .auth-form input, .alert-form select {
+    width: 80%;
+    max-width: 300px;
+    padding: 5px;
+    margin: 0 auto;
+    display: block;
+}
+
 .alert-button {
-    background-color: #dc3545; /* Rojo vibrante como alert-icon.png */
+    background-color: #dc3545;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -52,7 +60,21 @@
 }
 
 .alert-button:hover {
-    background-color: #c82333; /* Hover rojo más oscuro */
+    background-color: #c82333;
+}
+
+.auth-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+.auth-button:hover {
+    background-color: #0056b3;
 }
 
 .notifications {
@@ -64,7 +86,7 @@
 }
 
 .history-button {
-    background-color: #343a40; /* Gris oscuro elegante */
+    background-color: #343a40;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -73,7 +95,7 @@
 }
 
 .history-button:hover {
-    background-color: #495057; /* Hover gris más claro */
+    background-color: #495057;
 }
 
 .history-controls label {
@@ -87,7 +109,7 @@
 .footer {
     text-align: center;
     padding: 10px;
-    background-color: #003087; /* Igual que el header */
+    background-color: #003087;
     color: white;
     margin-top: 20px;
 }

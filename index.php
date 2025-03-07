@@ -1,5 +1,5 @@
 <?php
-// index.php - Página principal de la aplicación
+session_start();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -26,6 +26,23 @@
     </header>
     <main class="container">
         <div id="map" class="map"></div>
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            <section class="auth-form">
+                <h2>Registro / Inicio de Sesión</h2>
+                <form id="register-form">
+                    <label for="email">Correo:</label>
+                    <input type="email" id="email" name="email" required>
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                    <label for="apellido">Apellido:</label>
+                    <input type="text" id="apellido" name="apellido" required>
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" name="password" required>
+                    <button type="submit" class="auth-button">Registrarse</button>
+                    <button type="button" id="login-btn" class="auth-button">Iniciar Sesión</button>
+                </form>
+            </section>
+        <?php endif; ?>
         <section class="alert-form">
             <h2>Enviar Alerta</h2>
             <form id="send-alert-form">
@@ -49,6 +66,9 @@
                 <label for="history-end">Hasta:</label>
                 <input type="date" id="history-end" disabled>
             </div>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <button id="logout-btn" class="auth-button">Cerrar Sesión</button>
+            <?php endif; ?>
         </section>
     </main>
     <footer class="footer">
@@ -59,7 +79,6 @@
     <script>
         window.PUSHER_KEY = <?php echo json_encode(getenv('PUSHER_KEY')); ?>;
         window.PUSHER_CLUSTER = <?php echo json_encode(getenv('PUSHER_CLUSTER')); ?>;
-        // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').then(reg => {
                 console.log('Service Worker registrado:', reg);
