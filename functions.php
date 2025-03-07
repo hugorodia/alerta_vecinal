@@ -37,7 +37,7 @@ function getPusher() {
 
 function sendVerificationEmail($email, $nombre, $token) {
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    $fromEmail = 'tu-email@dominio.com'; // Cambia esto al email verificado en SendGrid
+    $fromEmail = 'alertavecinal@gmail.com'; // Cambia esto al email verificado en SendGrid
 
     $emailObj = new Mail();
     $emailObj->setFrom($fromEmail, "Alerta Vecinal");
