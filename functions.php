@@ -6,11 +6,11 @@ use Pusher\Pusher;
 use SendGrid\Mail\Mail;
 
 function getDBConnection() {
-    $dbname = getenv('PGDATABASE');  // Sin _
-    $host = getenv('PGHOST');        // Sin _
-    $port = getenv('PGPORT') ?: '5432';  // Sin _, con valor por defecto
-    $username = getenv('PGUSER');    // Sin _
-    $password = getenv('PGPASSWORD'); // Sin _
+    $dbname = getenv('PGDATABASE');
+    $host = getenv('PGHOST');
+    $port = getenv('PGPORT') ?: '5432';
+    $username = getenv('PGUSER');
+    $password = getenv('PGPASSWORD');
     try {
         $conn = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $username, $password);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -37,7 +37,12 @@ function getPusher() {
 
 function sendVerificationEmail($email, $nombre, $token) {
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    $fromEmail = 'alertavecinal@gmail.com'; // Cambia esto al email verificado en SendGrid
+    $fromEmail = 'alertavecinal2025@gmail.com'; // Email verificado en SendGrid
+
+    if (empty($sendgridApiKey)) {
+        error_log("SENDGRID_API_KEY no está configurada");
+        return false;
+    }
 
     $emailObj = new Mail();
     $emailObj->setFrom($fromEmail, "Alerta Vecinal");
@@ -53,9 +58,13 @@ function sendVerificationEmail($email, $nombre, $token) {
     $sendgrid = new \SendGrid($sendgridApiKey);
     try {
         $response = $sendgrid->send($emailObj);
-        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+        $statusCode = $response->statusCode();
+        $responseBody = $response->body();
+        error_log("SendGrid response: $statusCode - $responseBody");
+        if ($statusCode >= 200 && $statusCode < 300) {
             return true;
         } else {
+            error_log("SendGrid fallo con código: $statusCode - $responseBody");
             return false;
         }
     } catch (Exception $e) {
@@ -215,14 +224,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 $stmt = $conn->prepare("
-                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido
+                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido,
+                           (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) AS distance
                     FROM alerts a
                     JOIN users u ON a.user_id = u.id
-                    WHERE ST_DWithin(
-                        ST_MakePoint(a.longitud, a.latitud)::geometry,
-                        ST_MakePoint(:longitud, :latitud)::geometry,
-                        :radio * 1000
-                    ) AND a.visible = true
+                    WHERE a.visible = true
+                    HAVING distance < :radio
                 ");
                 $stmt->execute([
                     'latitud' => $latitud,
