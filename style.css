@@ -113,3 +113,15 @@
     color: white;
     margin-top: 20px;
 }
+
+.container {
+    position: relative;
+}
+
+.auth-form {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 400px;
+    margin: 20px auto;
+}

@@ -14,7 +14,7 @@ session_start();
     <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png?v=1">
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css?v=1.0">
+    <link rel="stylesheet" href="style.css?v=1.1">
 </head>
 <body>
     <header class="header">
@@ -26,23 +26,6 @@ session_start();
     </header>
     <main class="container">
         <div id="map" class="map"></div>
-        <?php if (!isset($_SESSION['user_id'])): ?>
-            <section class="auth-form">
-                <h2>Registro / Inicio de Sesión</h2>
-                <form id="register-form">
-                    <label for="email">Correo:</label>
-                    <input type="email" id="email" name="email" required>
-                    <label for="nombre">Nombre:</label>
-                    <input type="text" id="nombre" name="nombre" required>
-                    <label for="apellido">Apellido:</label>
-                    <input type="text" id="apellido" name="apellido" required>
-                    <label for="password">Contraseña:</label>
-                    <input type="password" id="password" name="password" required>
-                    <button type="submit" class="auth-button">Registrarse</button>
-                    <button type="button" id="login-btn" class="auth-button">Iniciar Sesión</button>
-                </form>
-            </section>
-        <?php endif; ?>
         <section class="alert-form">
             <h2>Enviar Alerta</h2>
             <form id="send-alert-form">
@@ -70,6 +53,23 @@ session_start();
                 <button id="logout-btn" class="auth-button">Cerrar Sesión</button>
             <?php endif; ?>
         </section>
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            <section class="auth-form">
+                <h2>Registro / Inicio de Sesión</h2>
+                <form id="register-form">
+                    <label for="email">Correo:</label>
+                    <input type="email" id="email" name="email" required>
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                    <label for="apellido">Apellido:</label>
+                    <input type="text" id="apellido" name="apellido" required>
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" name="password" required>
+                    <button type="submit" class="auth-button">Registrarse</button>
+                    <button type="button" id="login-btn" class="auth-button">Iniciar Sesión</button>
+                </form>
+            </section>
+        <?php endif; ?>
     </main>
     <footer class="footer">
         <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>
@@ -87,6 +87,6 @@ session_start();
             });
         }
     </script>
-    <script src="script.js?v=1.0"></script>
+    <script src="script.js?v=1.1"></script>
 </body>
 </html>
