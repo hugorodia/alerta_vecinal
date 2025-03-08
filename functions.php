@@ -27,12 +27,16 @@ function getPusher() {
         'cluster' => getenv('PUSHER_CLUSTER'),
         'encrypted' => true
     ];
-    return new Pusher(
+    $pusher = new Pusher(
         getenv('PUSHER_KEY'),
         getenv('PUSHER_SECRET'),
         getenv('PUSHER_APP_ID'),
         $options
     );
+    if (!$pusher) {
+        error_log("Error al inicializar Pusher");
+    }
+    return $pusher;
 }
 
 function sendVerificationEmail($email, $nombre, $token) {
@@ -150,13 +154,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'registrarAlerta':
             session_start();
             if (!isset($_SESSION['user_id'])) {
+                error_log("Sesión no iniciada al intentar registrar alerta");
                 echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión para enviar alertas']);
                 exit;
             }
             $stmt = $conn->prepare("SELECT is_verified FROM users WHERE id = :user_id");
             $stmt->execute(['user_id' => $_SESSION['user_id']]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$user['is_verified']) {
+            $user = $stmt->fetch(PDO::FETCH_ASSOC); // Corregido: quitado el guion
+            if (!$user || !$user['is_verified']) { // Añadido chequeo de $user
+                error_log("Usuario no verificado o no encontrado: user_id=" . $_SESSION['user_id']);
                 echo json_encode(['success' => false, 'error' => 'Debes verificar tu correo para enviar alertas']);
                 exit;
             }
@@ -167,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user_id = $_SESSION['user_id'];
 
             if (empty($tipo) || empty($latitud) || empty($longitud) || empty($radio)) {
+                error_log("Faltan datos requeridos: tipo=$tipo, latitud=$latitud, longitud=$longitud, radio=$radio");
                 echo json_encode(['success' => false, 'error' => 'Faltan datos requeridos']);
                 exit;
             }
@@ -205,10 +212,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
 
                 $pusher = getPusher();
-                $pusher->trigger('alert-channel', 'new-alert', $alert);
+                if ($pusher) {
+                    $pusher->trigger('alert-channel', 'new-alert', $alert);
+                    error_log("Alerta enviada a Pusher: ID $alertId");
+                } else {
+                    error_log("Pusher no disponible, alerta no enviada al canal");
+                }
 
                 echo json_encode(['success' => true, 'alert' => $alert]);
             } catch (PDOException $e) {
+                error_log("Error al registrar alerta: " . $e->getMessage());
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
             break;
@@ -301,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
     $token = $_GET['token'];
     $conn = getDBConnection();
-    error_log("Verificando token: $token"); // Depuración
+    error_log("Verificando token: $token");
     try {
         $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
         $stmt->execute(['token' => $token]);
@@ -309,14 +322,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
             $stmt->execute(['id' => $user['id']]);
-            error_log("Usuario verificado: ID " . $user['id']); // Depuración
+            error_log("Usuario verificado: ID " . $user['id']);
             echo "<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes iniciar sesión en Alerta Vecinal.</p>";
         } else {
-            error_log("Token no encontrado o ya verificado: $token"); // Depuración
+            error_log("Token no encontrado o ya verificado: $token");
             echo "<h1>Error</h1><p>Token inválido o cuenta ya verificada.</p>";
         }
     } catch (PDOException $e) {
-        error_log("Error en verificación: " . $e->getMessage()); // Depuración
+        error_log("Error en verificación: " . $e->getMessage());
         echo "<h1>Error</h1><p>" . $e->getMessage() . "</p>";
     }
 } else {
