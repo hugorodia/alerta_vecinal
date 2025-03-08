@@ -3,12 +3,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
 
     function initMap(lat = -34.6037, lng = -58.3816) {
+        const mapElement = document.getElementById('map');
+        if (!mapElement) {
+            console.error("Elemento con ID 'map' no encontrado en el HTML");
+            return;
+        }
         if (!map) {
-            const mapElement = document.getElementById('map');
-            if (!mapElement) {
-                console.error("Elemento con ID 'map' no encontrado en el HTML");
-                return;
-            }
             map = L.map('map').setView([lat, lng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -64,8 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
             enableNotifications.addEventListener('change', () => {
                 localStorage.setItem('notificationsEnabled', enableNotifications.checked);
             });
-        } else {
-            console.warn("Elemento 'enable-notifications' no encontrado");
         }
     }
 
@@ -87,7 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     tipo,
                     latitud,
                     longitud,
-                    radio
+                    radio,
+                    user_id: userId
                 })
             });
 
@@ -198,13 +197,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteAlert(alertId) {
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+            alert("Debes iniciar sesión para eliminar alertas.");
+            return;
+        }
         try {
             const response = await fetch('functions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'eliminarAlerta',
-                    id: alertId
+                    id: alertId,
+                    user_id: userId
                 })
             });
             const result = await response.json();
@@ -221,20 +226,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleAlertHistory() {
-        if (!localStorage.getItem('user_id')) {
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
             alert("Para ver el historial, primero debes registrarte e iniciar sesión.");
             return;
         }
         const historyBtn = document.getElementById('show-history-btn');
-        if (!historyBtn) {
-            console.warn("Elemento 'show-history-btn' no encontrado");
-            return;
-        }
         if (!historyVisible) {
             const url = 'functions.php';
             const fechaInicio = document.getElementById('history-start')?.value;
             const fechaFin = document.getElementById('history-end')?.value;
-            const body = { action: 'obtenerHistorialAlertas' };
+            const body = { action: 'obtenerHistorialAlertas', user_id: userId };
             if (fechaInicio && fechaFin) {
                 body.fechaInicio = fechaInicio + ' 00:00:00';
                 body.fechaFin = fechaFin + ' 23:59:59';
@@ -329,29 +331,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Verificación de login persistente al cargar la página
     const userId = localStorage.getItem('user_id');
-    const registerForm = document.getElementById('register-form');
-    const mapContainer = document.getElementById('map'); // Ajustado a 'map'
+    const registerFormSection = document.querySelector('.auth-form');
+    const mapElement = document.getElementById('map');
     const logoutBtn = document.getElementById('logout-btn');
 
-    if (userId) {
-        // Usuario logueado
-        if (registerForm) registerForm.style.display = 'none';
-        else console.warn("Elemento 'register-form' no encontrado");
-        if (mapContainer) mapContainer.style.display = 'block';
-        else console.error("Elemento 'map' no encontrado");
+    if (userId && mapElement) {
+        mapElement.style.display = 'block';
+        if (registerFormSection) registerFormSection.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'block';
-        else console.warn("Elemento 'logout-btn' no encontrado");
-        initMap(); // Inicializa el mapa
+        initMap();
     } else {
-        // No logueado
-        if (registerForm) registerForm.style.display = 'block';
-        else console.warn("Elemento 'register-form' no encontrado");
-        if (mapContainer) mapContainer.style.display = 'none';
-        else console.error("Elemento 'map' no encontrado");
+        if (mapElement) mapElement.style.display = 'none';
+        if (registerFormSection) registerFormSection.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'none';
-        else console.warn("Elemento 'logout-btn' no encontrado");
     }
 
+    const registerForm = document.getElementById('register-form');
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -384,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-btn')?.addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            console.log("Enviando login - Email:", email, "Password:", password); // Depuración
+            console.log("Enviando login - Email:", email, "Password:", password);
             try {
                 const response = await fetch('functions.php', {
                     method: 'POST',
@@ -394,10 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (result.success) {
                     localStorage.setItem('user_id', result.user_id);
-                    if (registerForm) registerForm.style.display = 'none';
-                    if (mapContainer) mapContainer.style.display = 'block';
+                    if (registerFormSection) registerFormSection.style.display = 'none';
+                    if (mapElement) mapElement.style.display = 'block';
                     if (logoutBtn) logoutBtn.style.display = 'block';
-                    initMap(); // Inicializa el mapa tras login
+                    initMap();
                 } else {
                     alert("Error al iniciar sesión: " + result.error);
                 }
@@ -411,12 +406,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('user_id');
-            if (registerForm) registerForm.style.display = 'block';
-            if (mapContainer) mapContainer.style.display = 'none';
+            if (registerFormSection) registerFormSection.style.display = 'block';
+            if (mapElement) mapElement.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'none';
             if (map) {
-                map.remove(); // Limpia el mapa
-                map = null; // Resetea la variable
+                map.remove();
+                map = null;
             }
         });
     }

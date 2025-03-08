@@ -140,8 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         echo json_encode(['success' => false, 'error' => 'Debes verificar tu correo antes de iniciar sesión']);
                         exit;
                     }
-                    session_start();
-                    $_SESSION['user_id'] = $user['id'];
                     echo json_encode(['success' => true, 'user_id' => $user['id']]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Correo o contraseña incorrectos']);
@@ -152,17 +150,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'registrarAlerta':
-            session_start();
-            if (!isset($_SESSION['user_id'])) {
-                error_log("Sesión no iniciada al intentar registrar alerta");
+            $user_id = $data['user_id'] ?? '';
+            if (empty($user_id)) {
                 echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión para enviar alertas']);
                 exit;
             }
             $stmt = $conn->prepare("SELECT is_verified FROM users WHERE id = :user_id");
-            $stmt->execute(['user_id' => $_SESSION['user_id']]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC); // Corregido: quitado el guion
-            if (!$user || !$user['is_verified']) { // Añadido chequeo de $user
-                error_log("Usuario no verificado o no encontrado: user_id=" . $_SESSION['user_id']);
+            $stmt->execute(['user_id' => $user_id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$user || !$user['is_verified']) {
                 echo json_encode(['success' => false, 'error' => 'Debes verificar tu correo para enviar alertas']);
                 exit;
             }
@@ -170,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $latitud = $data['latitud'] ?? '';
             $longitud = $data['longitud'] ?? '';
             $radio = $data['radio'] ?? '';
-            $user_id = $_SESSION['user_id'];
 
             if (empty($tipo) || empty($latitud) || empty($longitud) || empty($radio)) {
                 error_log("Faltan datos requeridos: tipo=$tipo, latitud=$latitud, longitud=$longitud, radio=$radio");
@@ -256,8 +251,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'eliminarAlerta':
-            session_start();
-            if (!isset($_SESSION['user_id'])) {
+            $user_id = $data['user_id'] ?? '';
+            if (empty($user_id)) {
                 echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión']);
                 exit;
             }
@@ -268,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             try {
                 $stmt = $conn->prepare("UPDATE alerts SET visible = false WHERE id = :id AND user_id = :user_id");
-                $stmt->execute(['id' => $id, 'user_id' => $_SESSION['user_id']]);
+                $stmt->execute(['id' => $id, 'user_id' => $user_id]);
                 if ($stmt->rowCount() > 0) {
                     echo json_encode(['success' => true]);
                 } else {
@@ -280,8 +275,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'obtenerHistorialAlertas':
-            session_start();
-            if (!isset($_SESSION['user_id'])) {
+            $user_id = $data['user_id'] ?? '';
+            if (empty($user_id)) {
                 echo json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']);
                 exit;
             }
