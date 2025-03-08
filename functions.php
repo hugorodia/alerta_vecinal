@@ -1,6 +1,6 @@
 <?php
-ob_start(); // Inicia buffer para capturar cualquier salida inesperada
-header('Content-Type: application/json'); // Asegura que siempre se devuelva JSON
+ob_start();
+header('Content-Type: application/json');
 
 require 'vendor/autoload.php';
 
@@ -25,20 +25,32 @@ function getDBConnection() {
 }
 
 function getPusher() {
+    $pusherKey = getenv('key');        // Cambiado de PUSHER_KEY a key
+    $pusherSecret = getenv('secret');  // Cambiado de PUSHER_SECRET a secret
+    $pusherAppId = getenv('app_id');   // Cambiado de PUSHER_APP_ID a app_id
+    $pusherCluster = getenv('cluster') ?: 'us2'; // Cambiado de PUSHER_CLUSTER a cluster
+
+    error_log("Pusher Config - Key: " . ($pusherKey ? 'Set' : 'Not Set') . 
+              ", Secret: " . ($pusherSecret ? 'Set' : 'Not Set') . 
+              ", App ID: " . ($pusherAppId ? 'Set' : 'Not Set') . 
+              ", Cluster: $pusherCluster");
+
+    if (!$pusherKey || !$pusherSecret || !$pusherAppId) {
+        error_log("Credenciales de Pusher incompletas. No se enviará al canal.");
+        return null;
+    }
+
     $options = [
-        'cluster' => getenv('PUSHER_CLUSTER'),
+        'cluster' => $pusherCluster,
         'encrypted' => true
     ];
-    $pusher = new Pusher(
-        getenv('PUSHER_KEY'),
-        getenv('PUSHER_SECRET'),
-        getenv('PUSHER_APP_ID'),
-        $options
-    );
-    if (!$pusher) {
-        error_log("Error al inicializar Pusher");
+    try {
+        $pusher = new Pusher($pusherKey, $pusherSecret, $pusherAppId, $options);
+        return $pusher;
+    } catch (Exception $e) {
+        error_log("Error al inicializar Pusher: " . $e->getMessage());
+        return null;
     }
-    return $pusher;
 }
 
 function sendVerificationEmail($email, $nombre, $token) {
@@ -152,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para enviar alertas']));
             }
-            $stmt = $conn->prepare("SELECT is_verified FROM users WHERE id = :user_id");
+            $stmt = $conn->prepare("SELECT is_verified, nombre, apellido FROM users WHERE id = :user_id");
             $stmt->execute(['user_id' => $user_id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$user || !$user['is_verified']) {
@@ -185,10 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $alertId = $result['id'];
                 $fecha = $result['fecha'];
 
-                $stmt = $conn->prepare("SELECT nombre, apellido FROM users WHERE id = :user_id");
-                $stmt->execute(['user_id' => $user_id]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
                 $alert = [
                     'id' => $alertId,
                     'tipo' => $tipo,
@@ -206,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pusher->trigger('alert-channel', 'new-alert', $alert);
                     error_log("Alerta enviada a Pusher: ID $alertId");
                 } else {
-                    error_log("Pusher no disponible, alerta no enviada al canal");
+                    error_log("Pusher no disponible, alerta registrada pero no enviada al canal");
                 }
 
                 die(json_encode(['success' => true, 'alert' => $alert]));
@@ -230,101 +238,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     FROM alerts a
                     JOIN users u ON a.user_id = u.id
                     WHERE a.visible = true
-                    AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) < :radio
-                ");
-                $stmt->execute([
-                    'latitud' => $latitud,
-                    'longitud' => $longitud,
-                    'radio' => $radio
-                ]);
-                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                die(json_encode(['success' => true, 'alerts' => $alerts]));
-            } catch (PDOException $e) {
-                error_log("Error al obtener alertas cercanas: " . $e->getMessage());
-                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
-            }
-            break;
-
-        case 'eliminarAlerta':
-            $user_id = $data['user_id'] ?? '';
-            if (empty($user_id)) {
-                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión']));
-            }
-            $id = $data['id'] ?? '';
-            if (empty($id)) {
-                die(json_encode(['success' => false, 'error' => 'ID de alerta requerido']));
-            }
-            try {
-                $stmt = $conn->prepare("UPDATE alerts SET visible = false WHERE id = :id AND user_id = :user_id");
-                $stmt->execute(['id' => $id, 'user_id' => $user_id]);
-                if ($stmt->rowCount() > 0) {
-                    die(json_encode(['success' => true]));
-                } else {
-                    die(json_encode(['success' => false, 'error' => 'Alerta no encontrada o no tienes permiso']));
-                }
-            } catch (PDOException $e) {
-                error_log("Error al eliminar alerta: " . $e->getMessage());
-                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
-            }
-            break;
-
-        case 'obtenerHistorialAlertas':
-            $user_id = $data['user_id'] ?? '';
-            if (empty($user_id)) {
-                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']));
-            }
-            $fechaInicio = $data['fechaInicio'] ?? null;
-            $fechaFin = $data['fechaFin'] ?? null;
-            try {
-                $query = "
-                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido 
-                    FROM alerts a
-                    JOIN users u ON a.user_id = u.id
-                ";
-                $params = [];
-                if ($fechaInicio && $fechaFin) {
-                    $query .= " WHERE a.fecha BETWEEN :fechaInicio AND :fechaFin";
-                    $params['fechaInicio'] = $fechaInicio;
-                    $params['fechaFin'] = $fechaFin;
-                }
-                $stmt = $conn->prepare($query);
-                $stmt->execute($params);
-                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                die(json_encode(['success' => true, 'alerts' => $alerts]));
-            } catch (PDOException $e) {
-                error_log("Error al obtener historial: " . $e->getMessage());
-                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
-            }
-            break;
-
-        default:
-            die(json_encode(['success' => false, 'error' => 'Acción no válida']));
-    }
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
-    $token = $_GET['token'];
-    $conn = getDBConnection();
-    error_log("Verificando token: $token");
-    try {
-        $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
-        $stmt->execute(['token' => $token]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($user) {
-            $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
-            $stmt->execute(['id' => $user['id']]);
-            error_log("Usuario verificado: ID " . $user['id']);
-            die("<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes iniciar sesión en Alerta Vecinal.</p>");
-        } else {
-            error_log("Token no encontrado o ya verificado: $token");
-            die("<h1>Error</h1><p>Token inválido o cuenta ya verificada.</p>");
-        }
-    } catch (PDOException $e) {
-        error_log("Error en verificación: " . $e->getMessage());
-        die("<h1>Error</h1><p>" . $e->getMessage() . "</p>");
-    }
-} else {
-    http_response_code(405);
-    die(json_encode(['success' => false, 'error' => 'Método no permitido']));
-}
-
-ob_end_clean(); // Limpia cualquier salida inesperada antes de enviar el JSON
-?>
+                    AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) *
