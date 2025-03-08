@@ -68,11 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Para enviar alertas, primero debes registrarte e iniciar sesión.");
-            return;
-        }
         const url = 'functions.php';
         try {
             const response = await fetch(url, {
@@ -85,14 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     tipo,
                     latitud,
                     longitud,
-                    radio,
-                    user_id: userId
+                    radio
                 })
             });
 
-            const rawResponse = await response.text(); // Captura la respuesta cruda
+            const rawResponse = await response.text();
             console.log("Respuesta cruda del servidor:", rawResponse);
-            const result = JSON.parse(rawResponse); // Intenta parsear como JSON
+            const result = JSON.parse(rawResponse);
 
             if (result.success) {
                 alert("Alerta enviada correctamente.");
@@ -127,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <b>Radio:</b> ${alert.radio} km<br>
             <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
             <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-            ${localStorage.getItem('user_id') && localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
+            ${alert.user_id == '<?php echo $_SESSION['user_id'] ?? ''; ?>' ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
         `;
         marker.bindPopup(popupContent).openPopup();
         marker.on('popupopen', () => {
@@ -185,7 +179,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             clearTimeout(timeoutId);
 
-            const result = await response.json();
+            const rawResponse = await response.text();
+            console.log("Respuesta cruda de obtenerAlertasCercanas:", rawResponse);
+            const result = JSON.parse(rawResponse);
+
             if (result.success) {
                 result.alerts.forEach(addAlertToMap);
             } else {
@@ -200,19 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteAlert(alertId) {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Debes iniciar sesión para eliminar alertas.");
-            return;
-        }
         try {
             const response = await fetch('functions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'eliminarAlerta',
-                    id: alertId,
-                    user_id: userId
+                    id: alertId
                 })
             });
             const result = await response.json();
@@ -229,17 +220,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleAlertHistory() {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Para ver el historial, primero debes registrarte e iniciar sesión.");
-            return;
-        }
         const historyBtn = document.getElementById('show-history-btn');
         if (!historyVisible) {
             const url = 'functions.php';
             const fechaInicio = document.getElementById('history-start')?.value;
             const fechaFin = document.getElementById('history-end')?.value;
-            const body = { action: 'obtenerHistorialAlertas', user_id: userId };
+            const body = { action: 'obtenerHistorialAlertas' };
             if (fechaInicio && fechaFin) {
                 body.fechaInicio = fechaInicio + ' 00:00:00';
                 body.fechaFin = fechaFin + ' 23:59:59';
@@ -275,6 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     historyBtn.textContent = 'Ocultar Historial';
                     historyVisible = true;
+                    document.getElementById('history-start').disabled = true;
+                    document.getElementById('history-end').disabled = true;
                 } else {
                     console.error("Error al obtener historial:", result.error);
                 }
@@ -286,6 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
             historyMarkers = [];
             historyBtn.textContent = 'Ver Historial';
             historyVisible = false;
+            document.getElementById('history-start').disabled = false;
+            document.getElementById('history-end').disabled = false;
         }
     }
 
@@ -332,21 +322,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Verificación de login persistente al cargar la página
-    const userId = localStorage.getItem('user_id');
+    // Verificación de estado inicial
+    const userId = '<?php echo $_SESSION['user_id'] ?? ''; ?>';
     const registerFormSection = document.querySelector('.auth-form');
     const mapElement = document.getElementById('map');
     const logoutBtn = document.getElementById('logout-btn');
 
+    console.log("userId:", userId);
+    console.log("registerFormSection:", registerFormSection);
+    console.log("mapElement:", mapElement);
+    console.log("logoutBtn:", logoutBtn);
+
     if (userId && mapElement) {
         mapElement.style.display = 'block';
         if (registerFormSection) registerFormSection.style.display = 'none';
-        if (logoutBtn) logoutBtn.style.display = 'block';
+        if (logoutBtn) {
+            console.log("Mostrando botón logout en carga inicial");
+            logoutBtn.style.display = 'block';
+        } else {
+            console.warn("Botón 'logout-btn' no encontrado en el DOM");
+        }
         initMap();
     } else {
-        if (mapElement) mapElement.style.display = 'none';
+        if (mapElement) mapElement.style.display = 'block'; // Siempre visible según tu diseño
         if (registerFormSection) registerFormSection.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'none';
+        initMap(); // Mapa visible incluso sin login
     }
 
     const registerForm = document.getElementById('register-form');
@@ -391,11 +392,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const result = await response.json();
                 if (result.success) {
-                    localStorage.setItem('user_id', result.user_id);
+                    localStorage.setItem('user_id', result.user_id); // Sincronizar con localStorage
                     if (registerFormSection) registerFormSection.style.display = 'none';
                     if (mapElement) mapElement.style.display = 'block';
-                    if (logoutBtn) logoutBtn.style.display = 'block';
-                    initMap();
+                    if (logoutBtn) {
+                        console.log("Mostrando botón logout tras login");
+                        logoutBtn.style.display = 'block';
+                    }
+                    location.reload(); // Recargar para reflejar sesión
                 } else {
                     alert("Error al iniciar sesión: " + result.error);
                 }
@@ -407,16 +411,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('user_id');
-            if (registerFormSection) registerFormSection.style.display = 'block';
-            if (mapElement) mapElement.style.display = 'none';
-            if (logoutBtn) logoutBtn.style.display = 'none';
-            if (map) {
-                map.remove();
-                map = null;
+        logoutBtn.addEventListener('click', async () => {
+            console.log("Cerrando sesión");
+            try {
+                const response = await fetch('functions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'logout' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    localStorage.removeItem('user_id');
+                    if (registerFormSection) registerFormSection.style.display = 'block';
+                    if (mapElement) mapElement.style.display = 'block'; // Mapa siempre visible
+                    if (logoutBtn) logoutBtn.style.display = 'none';
+                    if (map) {
+                        map.remove();
+                        map = null;
+                    }
+                    location.reload(); // Recargar para reflejar cierre de sesión
+                } else {
+                    alert("Error al cerrar sesión: " + result.error);
+                }
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                alert("Ocurrió un error al cerrar sesión.");
             }
         });
+    } else {
+        console.warn("No se pudo añadir evento al botón 'logout-btn' porque no existe");
     }
 
     const form = document.getElementById('send-alert-form');

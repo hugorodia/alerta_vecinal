@@ -25,10 +25,10 @@ function getDBConnection() {
 }
 
 function getPusher() {
-    $pusherKey = getenv('key');        // Cambiado de PUSHER_KEY a key
-    $pusherSecret = getenv('secret');  // Cambiado de PUSHER_SECRET a secret
-    $pusherAppId = getenv('app_id');   // Cambiado de PUSHER_APP_ID a app_id
-    $pusherCluster = getenv('cluster') ?: 'us2'; // Cambiado de PUSHER_CLUSTER a cluster
+    $pusherKey = getenv('key');
+    $pusherSecret = getenv('secret');
+    $pusherAppId = getenv('app_id');
+    $pusherCluster = getenv('cluster') ?: 'us2';
 
     error_log("Pusher Config - Key: " . ($pusherKey ? 'Set' : 'Not Set') . 
               ", Secret: " . ($pusherSecret ? 'Set' : 'Not Set') . 
@@ -88,6 +88,8 @@ function sendVerificationEmail($email, $nombre, $token) {
         return false;
     }
 }
+
+session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -149,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!$user['is_verified']) {
                         die(json_encode(['success' => false, 'error' => 'Debes verificar tu correo antes de iniciar sesión']));
                     }
+                    $_SESSION['user_id'] = $user['id'];
                     die(json_encode(['success' => true, 'user_id' => $user['id']]));
                 } else {
                     die(json_encode(['success' => false, 'error' => 'Correo o contraseña incorrectos']));
@@ -159,8 +162,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
 
+        case 'logout':
+            session_unset();
+            session_destroy();
+            die(json_encode(['success' => true, 'message' => 'Sesión cerrada']));
+            break;
+
         case 'registrarAlerta':
-            $user_id = $data['user_id'] ?? '';
+            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para enviar alertas']));
             }
@@ -238,4 +247,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     FROM alerts a
                     JOIN users u ON a.user_id = u.id
                     WHERE a.visible = true
-                    AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) *
+                    AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) < :radio
+                ");
+                $stmt->execute([
+                    'latitud' => $latitud,
+                    'longitud' => $longitud,
+                    'radio' => $radio
+                ]);
+                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                die(json_encode(['success' => true, 'alerts' => $alerts]));
+            } catch (PDOException $e) {
+                error_log("Error al obtener alertas cercanas: " . $e->getMessage());
+                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
+            }
+            break;
+
+        case 'eliminarAlerta':
+            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
+            if (empty($user_id)) {
+                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión']));
+            }
+            $id = $data['id'] ?? '';
+            if (empty($id)) {
+                die(json_encode(['success' => false, 'error' => 'ID de alerta requerido']));
+            }
+            try {
+                $stmt = $conn->prepare("UPDATE alerts SET visible = false WHERE id = :id AND user_id = :user_id");
+                $stmt->execute(['id' => $id, 'user_id' => $user_id]);
+                if ($stmt->rowCount() > 0) {
+                    die(json_encode(['success' => true]));
+                } else {
+                    die(json_encode(['success' => false, 'error' => 'Alerta no encontrada o no tienes permiso']));
+                }
+            } catch (PDOException $e) {
+                error_log("Error al eliminar alerta: " . $e->getMessage());
+                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
+            }
+            break;
+
+        case 'obtenerHistorialAlertas':
+            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
+            if (empty($user_id)) {
+                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']));
+            }
+            $fechaInicio = $data['fechaInicio'] ?? null;
+            $fechaFin = $data['fechaFin'] ?? null;
+            try {
+                $query = "
+                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido 
+                    FROM alerts a
+                    JOIN users u ON a.user_id = u.id
+                    WHERE a.user_id = :user_id
+                ";
+                $params = ['user_id' => $user_id];
+                if ($fechaInicio && $fechaFin) {
+                    $query .= " AND a.fecha BETWEEN :fechaInicio AND :fechaFin";
+                    $params['fechaInicio'] = $fechaInicio;
+                    $params['fechaFin'] = $fechaFin;
+                }
+                $stmt = $conn->prepare($query);
+                $stmt->execute($params);
+                $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                die(json_encode(['success' => true, 'alerts' => $alerts]));
+            } catch (PDOException $e) {
+                error_log("Error al obtener historial: " . $e->getMessage());
+                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
+            }
+            break;
+
+        default:
+            die(json_encode(['success' => false, 'error' => 'Acción no válida']));
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
+    $token = $_GET['token'];
+    $conn = getDBConnection();
+    error_log("Verificando token: $token");
+    try {
+        $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
+        $stmt->execute(['token' => $token]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($user) {
+            $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
+            $stmt->execute(['id' => $user['id']]);
+            error_log("Usuario verificado: ID " . $user['id']);
+            die("<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes iniciar sesión en Alerta Vecinal.</p>");
+        } else {
+            error_log("Token no encontrado o ya verificado: $token");
+            die("<h1>Error</h1><p>Token inválido o cuenta ya verificada.</p>");
+        }
+    } catch (PDOException $e) {
+        error_log("Error en verificación: " . $e->getMessage());
+        die("<h1>Error</h1><p>" . $e->getMessage() . "</p>");
+    }
+} else {
+    http_response_code(405);
+    die(json_encode(['success' => false, 'error' => 'Método no permitido']));
+}
+
+ob_end_clean();
+?>
