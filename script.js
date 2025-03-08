@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
-        if (!localStorage.getItem('user_id')) {
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
             alert("Para enviar alertas, primero debes registrarte e iniciar sesión.");
             return;
         }
@@ -77,8 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     tipo,
                     latitud,
                     longitud,
-                    radio,
-                    user_id: localStorage.getItem('user_id')
+                    radio
                 })
             });
 
@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 addAlertToMap(result.alert);
                 addRadarAnimation(latitud, longitud, radio);
             } else {
+                console.error("Error al enviar la alerta:", result.error);
                 alert("Error al enviar la alerta: " + result.error);
             }
         } catch (error) {
@@ -313,6 +314,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Verificación de login persistente al cargar la página
+    const userId = localStorage.getItem('user_id');
+    if (userId) {
+        // Usuario logueado: muestra el mapa y oculta el formulario
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('map-container').style.display = 'block';
+        document.getElementById('logout-btn').style.display = 'block';
+        initMap(); // Inicializa el mapa
+    } else {
+        // No logueado: muestra el formulario y oculta el mapa
+        document.getElementById('register-form').style.display = 'block';
+        document.getElementById('map-container').style.display = 'none';
+        document.getElementById('logout-btn').style.display = 'none';
+    }
+
     const registerForm = document.getElementById('register-form');
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
@@ -346,6 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-btn').addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            console.log("Enviando login - Email:", email, "Password:", password); // Depuración
             try {
                 const response = await fetch('functions.php', {
                     method: 'POST',
@@ -355,7 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (result.success) {
                     localStorage.setItem('user_id', result.user_id);
-                    location.reload();
+                    document.getElementById('register-form').style.display = 'none';
+                    document.getElementById('map-container').style.display = 'block';
+                    document.getElementById('logout-btn').style.display = 'block';
+                    initMap(); // Inicializa el mapa tras login
                 } else {
                     alert("Error al iniciar sesión: " + result.error);
                 }
@@ -370,7 +390,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('user_id');
-            location.reload();
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+            if (map) {
+                map.remove(); // Limpia el mapa
+                map = null; // Resetea la variable
+            }
         });
     }
 
@@ -392,5 +418,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('show-history-btn').addEventListener('click', toggleAlertHistory);
 
-    initMap(); // Siempre se ejecuta
+    // initMap() ya no se llama aquí; se llama según el estado de login
 });
