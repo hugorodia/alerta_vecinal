@@ -4,6 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         if (!map) {
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                console.error("Elemento con ID 'map' no encontrado en el HTML");
+                return;
+            }
             map = L.map('map').setView([lat, lng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -52,12 +57,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const enableNotifications = document.getElementById('enable-notifications');
-        if (localStorage.getItem('notificationsEnabled') === 'true') {
-            enableNotifications.checked = true;
+        if (enableNotifications) {
+            if (localStorage.getItem('notificationsEnabled') === 'true') {
+                enableNotifications.checked = true;
+            }
+            enableNotifications.addEventListener('change', () => {
+                localStorage.setItem('notificationsEnabled', enableNotifications.checked);
+            });
+        } else {
+            console.warn("Elemento 'enable-notifications' no encontrado");
         }
-        enableNotifications.addEventListener('change', () => {
-            localStorage.setItem('notificationsEnabled', enableNotifications.checked);
-        });
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
@@ -217,10 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const historyBtn = document.getElementById('show-history-btn');
+        if (!historyBtn) {
+            console.warn("Elemento 'show-history-btn' no encontrado");
+            return;
+        }
         if (!historyVisible) {
             const url = 'functions.php';
-            const fechaInicio = document.getElementById('history-start').value;
-            const fechaFin = document.getElementById('history-end').value;
+            const fechaInicio = document.getElementById('history-start')?.value;
+            const fechaFin = document.getElementById('history-end')?.value;
             const body = { action: 'obtenerHistorialAlertas' };
             if (fechaInicio && fechaFin) {
                 body.fechaInicio = fechaInicio + ' 00:00:00';
@@ -289,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-        if (document.getElementById('enable-notifications').checked && 'vibrate' in navigator) {
+        if (document.getElementById('enable-notifications')?.checked && 'vibrate' in navigator) {
             navigator.vibrate([200, 100, 200]);
         }
     }
@@ -316,20 +329,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Verificación de login persistente al cargar la página
     const userId = localStorage.getItem('user_id');
+    const registerForm = document.getElementById('register-form');
+    const mapContainer = document.getElementById('map'); // Ajustado a 'map'
+    const logoutBtn = document.getElementById('logout-btn');
+
     if (userId) {
-        // Usuario logueado: muestra el mapa y oculta el formulario
-        document.getElementById('register-form').style.display = 'none';
-        document.getElementById('map-container').style.display = 'block';
-        document.getElementById('logout-btn').style.display = 'block';
+        // Usuario logueado
+        if (registerForm) registerForm.style.display = 'none';
+        else console.warn("Elemento 'register-form' no encontrado");
+        if (mapContainer) mapContainer.style.display = 'block';
+        else console.error("Elemento 'map' no encontrado");
+        if (logoutBtn) logoutBtn.style.display = 'block';
+        else console.warn("Elemento 'logout-btn' no encontrado");
         initMap(); // Inicializa el mapa
     } else {
-        // No logueado: muestra el formulario y oculta el mapa
-        document.getElementById('register-form').style.display = 'block';
-        document.getElementById('map-container').style.display = 'none';
-        document.getElementById('logout-btn').style.display = 'none';
+        // No logueado
+        if (registerForm) registerForm.style.display = 'block';
+        else console.warn("Elemento 'register-form' no encontrado");
+        if (mapContainer) mapContainer.style.display = 'none';
+        else console.error("Elemento 'map' no encontrado");
+        if (logoutBtn) logoutBtn.style.display = 'none';
+        else console.warn("Elemento 'logout-btn' no encontrado");
     }
 
-    const registerForm = document.getElementById('register-form');
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -359,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        document.getElementById('login-btn').addEventListener('click', async () => {
+        document.getElementById('login-btn')?.addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             console.log("Enviando login - Email:", email, "Password:", password); // Depuración
@@ -372,9 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (result.success) {
                     localStorage.setItem('user_id', result.user_id);
-                    document.getElementById('register-form').style.display = 'none';
-                    document.getElementById('map-container').style.display = 'block';
-                    document.getElementById('logout-btn').style.display = 'block';
+                    if (registerForm) registerForm.style.display = 'none';
+                    if (mapContainer) mapContainer.style.display = 'block';
+                    if (logoutBtn) logoutBtn.style.display = 'block';
                     initMap(); // Inicializa el mapa tras login
                 } else {
                     alert("Error al iniciar sesión: " + result.error);
@@ -386,13 +408,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('user_id');
-            document.getElementById('register-form').style.display = 'block';
-            document.getElementById('map-container').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'none';
+            if (registerForm) registerForm.style.display = 'block';
+            if (mapContainer) mapContainer.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'none';
             if (map) {
                 map.remove(); // Limpia el mapa
                 map = null; // Resetea la variable
@@ -416,7 +437,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.getElementById('show-history-btn').addEventListener('click', toggleAlertHistory);
-
-    // initMap() ya no se llama aquí; se llama según el estado de login
+    document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
 });
