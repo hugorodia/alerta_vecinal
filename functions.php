@@ -37,7 +37,7 @@ function getPusher() {
 
 function sendVerificationEmail($email, $nombre, $token) {
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    $fromEmail = 'alertavecinal2025@gmail.com'; // Email verificado en SendGrid
+    $fromEmail = 'alertavecinal2025@gmail.com';
 
     if (empty($sendgridApiKey)) {
         error_log("SENDGRID_API_KEY no está configurada");
@@ -224,12 +224,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 $stmt = $conn->prepare("
-                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido,
-                           (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) AS distance
+                    SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido
                     FROM alerts a
                     JOIN users u ON a.user_id = u.id
                     WHERE a.visible = true
-                    HAVING distance < :radio
+                    AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) < :radio
                 ");
                 $stmt->execute([
                     'latitud' => $latitud,
@@ -302,6 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
     $token = $_GET['token'];
     $conn = getDBConnection();
+    error_log("Verificando token: $token"); // Depuración
     try {
         $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
         $stmt->execute(['token' => $token]);
@@ -309,11 +309,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
             $stmt->execute(['id' => $user['id']]);
+            error_log("Usuario verificado: ID " . $user['id']); // Depuración
             echo "<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes iniciar sesión en Alerta Vecinal.</p>";
         } else {
+            error_log("Token no encontrado o ya verificado: $token"); // Depuración
             echo "<h1>Error</h1><p>Token inválido o cuenta ya verificada.</p>";
         }
     } catch (PDOException $e) {
+        error_log("Error en verificación: " . $e->getMessage()); // Depuración
         echo "<h1>Error</h1><p>" . $e->getMessage() . "</p>";
     }
 } else {
