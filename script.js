@@ -167,11 +167,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
-    // Login automático tras verificación
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('verified') === 'true' && urlParams.get('user_id')) {
-        localStorage.setItem('user_id', urlParams.get('user_id'));
-        window.history.replaceState({}, document.title, '/'); // Limpiar URL
+    const sessionToken = urlParams.get('session_token');
+
+    if (sessionToken) {
+        fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'auto_login', session_token: sessionToken })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                localStorage.setItem('user_id', result.user_id);
+                document.querySelector('.auth-form').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'block';
+                window.history.replaceState({}, document.title, '/');
+                console.log('Auto-login exitoso con user_id:', result.user_id);
+            } else {
+                alert('Error en auto-login: ' + result.error);
+            }
+        });
     }
 
     const userId = localStorage.getItem('user_id');
@@ -179,12 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     initMap();
 
-    if (userId) {
-        if (registerFormSection) registerFormSection.style.display = 'none';
-        if (logoutBtn) logoutBtn.style.display = 'block';
-    } else {
-        if (registerFormSection) registerFormSection.style.display = 'block';
-        if (logoutBtn) logoutBtn.style.display = 'none';
+    if (userId && !sessionToken) {
+        registerFormSection.style.display = 'none';
+        logoutBtn.style.display = 'block';
+    } else if (!sessionToken) {
+        registerFormSection.style.display = 'block';
+        logoutBtn.style.display = 'none';
     }
 
     document.getElementById('register-form')?.addEventListener('submit', async e => {
@@ -215,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('user_id', result.user_id);
             document.querySelector('.auth-form').style.display = 'none';
             document.getElementById('logout-btn').style.display = 'block';
+            console.log('Login exitoso, user_id:', result.user_id);
         } else {
             alert("Error: " + result.error);
         }

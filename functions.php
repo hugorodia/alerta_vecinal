@@ -111,6 +111,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
 
+        case 'auto_login':
+            $sessionToken = $data['session_token'] ?? '';
+            if (empty($sessionToken)) {
+                die(json_encode(['success' => false, 'error' => 'Token de sesión requerido']));
+            }
+            $stmt = $conn->prepare("SELECT id FROM users WHERE session_token = :session_token AND is_verified = TRUE");
+            $stmt->execute(['session_token' => $sessionToken]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
+                // Limpiar el token tras usarlo
+                $stmt = $conn->prepare("UPDATE users SET session_token = NULL WHERE id = :id");
+                $stmt->execute(['id' => $user['id']]);
+                die(json_encode(['success' => true, 'user_id' => $user['id']]));
+            } else {
+                die(json_encode(['success' => false, 'error' => 'Token inválido o usuario no verificado']));
+            }
+            break;
+
         case 'logout':
             die(json_encode(['success' => true, 'message' => 'Sesión cerrada']));
             break;
@@ -223,8 +241,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($user) {
         $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
         $stmt->execute(['id' => $user['id']]);
-        // Redirigir con user_id para login automático
-        $redirectUrl = "https://alerta-vecinal.onrender.com/?verified=true&user_id=" . $user['id'];
+        $sessionToken = bin2hex(random_bytes(16));
+        $stmt = $conn->prepare("UPDATE users SET session_token = :session_token WHERE id = :id");
+        $stmt->execute(['session_token' => $sessionToken, 'id' => $user['id']]);
+        $redirectUrl = "https://alerta-vecinal.onrender.com/?session_token=$sessionToken";
         header("Location: $redirectUrl");
         exit;
     } else {
