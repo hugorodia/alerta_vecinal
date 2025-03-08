@@ -281,10 +281,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'obtenerHistorialAlertas':
-            $user_id = $data['user_id'] ?? '';
-            if (empty($user_id)) {
-                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']));
-            }
             $fechaInicio = $data['fechaInicio'] ?? null;
             $fechaFin = $data['fechaFin'] ?? null;
             try {
@@ -292,15 +288,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido 
                     FROM alerts a
                     JOIN users u ON a.user_id = u.id
-                    WHERE a.user_id = :user_id
                 ";
-                $params = ['user_id' => $user_id];
+                $params = [];
                 if ($fechaInicio && $fechaFin) {
-                    $query .= " AND a.fecha BETWEEN :fechaInicio AND :fechaFin";
+                    $query .= " WHERE a.fecha BETWEEN :fechaInicio AND :fechaFin";
                     $params['fechaInicio'] = $fechaInicio;
                     $params['fechaFin'] = $fechaFin;
                 }
-                $query .= " ORDER BY a.fecha DESC"; // Ordenar por fecha descendente
+                $query .= " ORDER BY a.fecha DESC";
                 $stmt = $conn->prepare($query);
                 $stmt->execute($params);
                 $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -311,8 +306,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
 
-        default:
-            die(json_encode(['success' => false, 'error' => 'Acción no válida']));
+        case 'reset_database':
+            try {
+                $conn->exec("DELETE FROM alerts");
+                $conn->exec("DELETE FROM users");
+                $conn->exec("ALTER SEQUENCE alerts_id_seq RESTART WITH 1");
+                $conn->exec("ALTER SEQUENCE users_id_seq RESTART WITH 1");
+                die(json_encode(['success' => true, 'message' => 'Base de datos reiniciada']));
+            } catch (PDOException $e) {
+                error_log("Error al reiniciar DB: " . $e->getMessage());
+                die(json_encode(['success' => false, 'error' => $e->getMessage()]));
+            }
+            break;
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'verify' && isset($_GET['token'])) {
     $token = $_GET['token'];
