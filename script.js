@@ -3,155 +3,68 @@ document.addEventListener('DOMContentLoaded', () => {
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
 
     function initMap(lat = -34.6037, lng = -58.3816) {
-        const mapElement = document.getElementById('map');
-        if (!mapElement) {
-            console.error("Elemento con ID 'map' no encontrado en el HTML");
-            return;
-        }
-        if (!map) {
-            map = L.map('map').setView([lat, lng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-        }
+        map = L.map('map').setView([lat, lng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-        const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', {
-            cluster: window.PUSHER_CLUSTER || 'us2',
-            encrypted: true
-        });
+        const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', { cluster: 'us2', encrypted: true });
         const channel = pusher.subscribe('alert-channel');
-        channel.bind('new-alert', function(data) {
-            console.log("Nueva alerta recibida:", data);
+        channel.bind('new-alert', data => {
             addAlertToMap(data);
-            if (document.getElementById('enable-notifications').checked) {
-                showNotification(data);
-            }
+            if (document.getElementById('enable-notifications').checked) showNotification(data);
             updateAlertCount();
         });
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    map.setView([latitude, longitude], 13);
-                    if (userMarker) {
-                        map.removeLayer(userMarker);
-                    }
-                    userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
-                    fetchNearbyAlerts(latitude, longitude, 10);
-                },
-                () => {
-                    alert("No se pudo obtener tu ubicación. Usando ubicación por defecto.");
-                    fetchNearbyAlerts(lat, lng, 10);
-                }
-            );
-        } else {
-            alert("Geolocalización no soportada. Usando ubicación por defecto.");
-            fetchNearbyAlerts(lat, lng, 10);
-        }
-
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission().then(permission => {
-                console.log("Estado del permiso de notificaciones:", permission);
-            });
-        }
-
-        const enableNotifications = document.getElementById('enable-notifications');
-        if (enableNotifications) {
-            if (localStorage.getItem('notificationsEnabled') === 'true') {
-                enableNotifications.checked = true;
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const { latitude, longitude } = pos.coords;
+                map.setView([latitude, longitude], 13);
+                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+                fetchNearbyAlerts(latitude, longitude, 10);
+            },
+            () => {
+                fetchNearbyAlerts(lat, lng, 10);
             }
-            enableNotifications.addEventListener('change', () => {
-                localStorage.setItem('notificationsEnabled', enableNotifications.checked);
-            });
-        }
+        );
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
         const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Para enviar alertas, primero debes registrarte e iniciar sesión.");
-            return;
-        }
-        const url = 'functions.php';
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action: 'registrarAlerta',
-                    tipo,
-                    latitud,
-                    longitud,
-                    radio,
-                    user_id: userId
-                })
-            });
-
-            const rawResponse = await response.text();
-            console.log("Respuesta cruda del servidor:", rawResponse);
-            const result = JSON.parse(rawResponse);
-
-            if (result.success) {
-                alert("Alerta enviada correctamente.");
-                addAlertToMap(result.alert);
-                addRadarAnimation(latitud, longitud, radio);
-            } else {
-                console.error("Error al enviar la alerta:", result.error);
-                alert("Error al enviar la alerta: " + result.error);
-            }
-        } catch (error) {
-            console.error("Error al enviar la alerta:", error);
-            alert("Ocurrió un error al enviar la alerta. Por favor, intenta nuevamente.");
+        if (!userId) return alert("Debes iniciar sesión.");
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'registrarAlerta', tipo, latitud, longitud, radio, user_id: userId })
+        });
+        const result = await response.json();
+        if (result.success) {
+            addAlertToMap(result.alert);
+            addRadarAnimation(latitud, longitud, radio);
+        } else {
+            alert("Error: " + result.error);
         }
     }
 
     function addAlertToMap(alert) {
-        const alertIcon = L.icon({
-            iconUrl: '/alert-icon.png',
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32]
-        });
-        const marker = L.marker([alert.latitud, alert.longitud], { icon: alertIcon }).addTo(map);
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = `
-            <video width="128" height="128" autoplay loop muted>
-                <source src="/alert-animation.mp4" type="video/mp4">
-                Tu navegador no soporta video.
-            </video>
-            <br>
+        const marker = L.marker([alert.latitud, alert.longitud], {
+            icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
+        }).addTo(map);
+        marker.bindPopup(`
             <b>Tipo:</b> ${alert.tipo}<br>
             <b>Radio:</b> ${alert.radio} km<br>
             <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
             <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-            ${localStorage.getItem('user_id') && localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
-        `;
-        marker.bindPopup(popupContent).openPopup();
+            ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
+        `).openPopup();
         marker.on('popupopen', () => {
-            const deleteBtn = document.getElementById(`delete-btn-${alert.id}`);
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => {
-                    deleteAlert(alert.id);
-                });
-            }
+            document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
         });
     }
 
     function addRadarAnimation(latitud, longitud, radio) {
-        const radiusInMeters = radio * 1000;
-        const radarCircle = L.circle([latitud, longitud], {
-            color: '#ffff00',
-            fillColor: '#ffff00',
-            fillOpacity: 0.4,
-            radius: radiusInMeters,
-            weight: 2
-        }).addTo(map);
-
-        let opacity = 0.4;
-        let scale = 1;
+        const radarCircle = L.circle([latitud, longitud], { color: '#ffff00', fillColor: '#ffff00', fillOpacity: 0.4, radius: radio * 1000, weight: 2 }).addTo(map);
+        let opacity = 0.4, scale = 1;
         const animation = setInterval(() => {
             opacity -= 0.05;
             scale += 0.1;
@@ -160,131 +73,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 map.removeLayer(radarCircle);
             } else {
                 radarCircle.setStyle({ fillOpacity: opacity });
-                radarCircle.setRadius(radiusInMeters * scale);
+                radarCircle.setRadius(radio * 1000 * scale);
             }
         }, 200);
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
-        const url = 'functions.php';
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action: 'obtenerAlertasCercanas',
-                    latitud,
-                    longitud,
-                    radio
-                }),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            const rawResponse = await response.text();
-            console.log("Respuesta cruda de obtenerAlertasCercanas:", rawResponse);
-            const result = JSON.parse(rawResponse);
-
-            if (result.success) {
-                result.alerts.forEach(addAlertToMap);
-            } else {
-                console.error("Error al obtener alertas cercanas: " + result.error);
-            }
-        } catch (error) {
-            console.error("Error al obtener alertas cercanas:", error);
-            if (error.name === 'AbortError') {
-                console.log("La carga de alertas tomó demasiado tiempo.");
-            }
-        }
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'obtenerAlertasCercanas', latitud, longitud, radio })
+        });
+        const result = await response.json();
+        if (result.success) result.alerts.forEach(addAlertToMap);
     }
 
     async function deleteAlert(alertId) {
         const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Debes iniciar sesión para eliminar alertas.");
-            return;
-        }
-        try {
-            const response = await fetch('functions.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'eliminarAlerta',
-                    id: alertId,
-                    user_id: userId
-                })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert("Alerta eliminada del mapa.");
-                location.reload();
-            } else {
-                alert("Error al eliminar: " + result.error);
-            }
-        } catch (error) {
-            console.error("Error al eliminar alerta:", error);
-            alert("Ocurrió un error al eliminar la alerta.");
-        }
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'eliminarAlerta', id: alertId, user_id: userId })
+        });
+        const result = await response.json();
+        if (result.success) location.reload();
+        else alert("Error: " + result.error);
     }
 
     async function toggleAlertHistory() {
         const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            alert("Para ver el historial, primero debes registrarte e iniciar sesión.");
-            return;
-        }
+        if (!userId) return alert("Debes iniciar sesión.");
         const historyBtn = document.getElementById('show-history-btn');
         if (!historyVisible) {
-            const url = 'functions.php';
             const fechaInicio = document.getElementById('history-start')?.value;
             const fechaFin = document.getElementById('history-end')?.value;
-            const body = { action: 'obtenerHistorialAlertas', user_id: userId };
+            const body = { action: 'obtenerHistorialAlertas' };
             if (fechaInicio && fechaFin) {
                 body.fechaInicio = fechaInicio + ' 00:00:00';
                 body.fechaFin = fechaFin + ' 23:59:59';
             }
-
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+            const response = await fetch('functions.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (result.success) {
+                historyMarkers.forEach(marker => map.removeLayer(marker));
+                historyMarkers = [];
+                result.alerts.forEach(alert => {
+                    const marker = L.marker([alert.latitud, alert.longitud], {
+                        icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
+                    }).addTo(map);
+                    marker.bindPopup(`
+                        <b>Tipo:</b> ${alert.tipo}<br>
+                        <b>Radio:</b> ${alert.radio} km<br>
+                        <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+                        <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
+                        <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
+                    `);
+                    historyMarkers.push(marker);
                 });
-                const result = await response.json();
-                if (result.success) {
-                    historyMarkers.forEach(marker => map.removeLayer(marker));
-                    historyMarkers = [];
-                    result.alerts.forEach(alert => {
-                        const marker = L.marker([alert.latitud, alert.longitud], {
-                            icon: L.icon({
-                                iconUrl: '/alert-icon.png',
-                                iconSize: [32, 32],
-                                iconAnchor: [16, 32],
-                                popupAnchor: [0, -32]
-                            })
-                        }).addTo(map);
-                        marker.bindPopup(`
-                            <b>Tipo:</b> ${alert.tipo}<br>
-                            <b>Radio:</b> ${alert.radio} km<br>
-                            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-                            <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-                            <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
-                        `);
-                        historyMarkers.push(marker);
-                    });
-                    historyBtn.textContent = 'Ocultar Historial';
-                    historyVisible = true;
-                    document.getElementById('history-start').disabled = true;
-                    document.getElementById('history-end').disabled = true;
-                } else {
-                    console.error("Error al obtener historial:", result.error);
-                }
-            } catch (error) {
-                console.error("Error al cargar historial:", error);
+                historyBtn.textContent = 'Ocultar Historial';
+                historyVisible = true;
+                document.getElementById('history-start').disabled = true;
+                document.getElementById('history-end').disabled = true;
             }
         } else {
             historyMarkers.forEach(marker => map.removeLayer(marker));
@@ -297,25 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showNotification(alert) {
-        if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-                new Notification('Nueva Alerta', {
-                    body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}\nEnviado por: ${alert.nombre} ${alert.apellido}`,
-                    icon: '/public/favicon.ico'
-                });
-            } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        new Notification('Nueva Alerta', {
-                            body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}\nEnviado por: ${alert.nombre} ${alert.apellido}`,
-                            icon: '/public/favicon.ico'
-                        });
-                    }
-                });
-            }
-        }
-        if (document.getElementById('enable-notifications')?.checked && 'vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]);
+        if (Notification.permission === 'granted') {
+            new Notification('Nueva Alerta', {
+                body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}\nEnviado por: ${alert.nombre} ${alert.apellido}`,
+                icon: '/public/favicon.ico'
+            });
         }
     }
 
@@ -324,156 +163,87 @@ document.addEventListener('DOMContentLoaded', () => {
         const counter = document.getElementById('alert-counter') || document.createElement('span');
         counter.id = 'alert-counter';
         counter.textContent = alertCount;
-        counter.style.backgroundColor = 'red';
-        counter.style.color = 'white';
-        counter.style.borderRadius = '50%';
-        counter.style.padding = '2px 6px';
-        counter.style.position = 'absolute';
-        counter.style.top = '10px';
-        counter.style.right = '10px';
-        if (!document.getElementById('alert-counter')) {
-            document.body.appendChild(counter);
-        }
-        if ('setAppBadge' in navigator) {
-            navigator.setAppBadge(alertCount).catch(err => console.log("Error al setear badge:", err));
-        }
+        counter.style.cssText = 'background-color: red; color: white; border-radius: 50%; padding: 2px 6px; position: absolute; top: 10px; right: 10px;';
+        if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
-    // Verificación de estado inicial
+    // Login automático tras verificación
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('verified') === 'true' && urlParams.get('user_id')) {
+        localStorage.setItem('user_id', urlParams.get('user_id'));
+        window.history.replaceState({}, document.title, '/'); // Limpiar URL
+    }
+
     const userId = localStorage.getItem('user_id');
     const registerFormSection = document.querySelector('.auth-form');
-    const mapElement = document.getElementById('map');
     const logoutBtn = document.getElementById('logout-btn');
+    initMap();
 
-    console.log("userId:", userId);
-    console.log("registerFormSection:", registerFormSection);
-    console.log("mapElement:", mapElement);
-    console.log("logoutBtn:", logoutBtn);
-
-    // Mapa siempre visible
-    if (mapElement) {
-        mapElement.style.display = 'block';
-        initMap();
-    }
-
-    // Mostrar u ocultar elementos según estado de login
     if (userId) {
         if (registerFormSection) registerFormSection.style.display = 'none';
-        if (logoutBtn) {
-            console.log("Mostrando botón logout en carga inicial");
-            logoutBtn.style.display = 'block';
-        } else {
-            console.warn("Botón 'logout-btn' no encontrado en el DOM");
-        }
+        if (logoutBtn) logoutBtn.style.display = 'block';
     } else {
         if (registerFormSection) registerFormSection.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'none';
     }
 
-    const registerForm = document.getElementById('register-form');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const nombre = document.getElementById('nombre').value;
-            const apellido = document.getElementById('apellido').value;
-            const password = document.getElementById('password').value;
-            try {
-                const response = await fetch('functions.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'register', email, nombre, apellido, password })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    document.getElementById('email').value = '';
-                    document.getElementById('nombre').value = '';
-                    document.getElementById('apellido').value = '';
-                    document.getElementById('password').value = '';
-                } else {
-                    alert("Error al registrar: " + result.error);
-                }
-            } catch (error) {
-                console.error("Error al registrar:", error);
-                alert("Ocurrió un error al registrar.");
-            }
+    document.getElementById('register-form')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const nombre = document.getElementById('nombre').value;
+        const apellido = document.getElementById('apellido').value;
+        const password = document.getElementById('password').value;
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'register', email, nombre, apellido, password })
         });
+        const result = await response.json();
+        alert(result.success ? result.message : "Error: " + result.error);
+    });
 
-        document.getElementById('login-btn')?.addEventListener('click', async () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            console.log("Enviando login - Email:", email, "Password:", password);
-            try {
-                const response = await fetch('functions.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'login', email, password })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    localStorage.setItem('user_id', result.user_id);
-                    if (registerFormSection) registerFormSection.style.display = 'none';
-                    if (logoutBtn) {
-                        console.log("Mostrando botón logout tras login");
-                        logoutBtn.style.display = 'block';
-                    }
-                } else {
-                    alert("Error al iniciar sesión: " + result.error);
-                }
-            } catch (error) {
-                console.error("Error al iniciar sesión:", error);
-                alert("Ocurrió un error al iniciar sesión.");
-            }
+    document.getElementById('login-btn')?.addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', email, password })
         });
-    }
+        const result = await response.json();
+        if (result.success) {
+            localStorage.setItem('user_id', result.user_id);
+            document.querySelector('.auth-form').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'block';
+        } else {
+            alert("Error: " + result.error);
+        }
+    });
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            console.log("Cerrando sesión");
-            try {
-                const response = await fetch('functions.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'logout' })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    localStorage.removeItem('user_id');
-                    if (registerFormSection) registerFormSection.style.display = 'block';
-                    if (logoutBtn) logoutBtn.style.display = 'none';
-                    if (map) {
-                        map.remove();
-                        map = null;
-                        initMap(); // Reiniciar mapa
-                    }
-                } else {
-                    alert("Error al cerrar sesión: " + result.error);
-                }
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
-                alert("Ocurrió un error al cerrar sesión.");
-            }
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        const response = await fetch('functions.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'logout' })
         });
-    } else {
-        console.warn("No se pudo añadir evento al botón 'logout-btn' porque no existe");
-    }
+        const result = await response.json();
+        if (result.success) {
+            localStorage.removeItem('user_id');
+            document.querySelector('.auth-form').style.display = 'block';
+            document.getElementById('logout-btn').style.display = 'none';
+            map.remove();
+            initMap();
+        }
+    });
 
-    const form = document.getElementById('send-alert-form');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const tipo = document.getElementById('alert-type').value;
-            const radio = parseInt(document.getElementById('alert-radius').value, 10);
-            if (!userMarker) {
-                alert("No se ha detectado tu ubicación. Por favor, habilita la geolocación.");
-                return;
-            }
-            const latitud = userMarker.getLatLng().lat;
-            const longitud = userMarker.getLatLng().lng;
-            await sendAlert(tipo, latitud, longitud, radio);
-        });
-    }
+    document.getElementById('send-alert-form')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const tipo = document.getElementById('alert-type').value;
+        const radio = parseInt(document.getElementById('alert-radius').value, 10);
+        if (!userMarker) return alert("Habilita la geolocalización.");
+        const { lat, lng } = userMarker.getLatLng();
+        await sendAlert(tipo, lat, lng, radio);
+    });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
 });
