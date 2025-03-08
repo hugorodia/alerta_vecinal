@@ -90,7 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
-            const result = await response.json();
+            const rawResponse = await response.text(); // Captura la respuesta cruda
+            console.log("Respuesta cruda del servidor:", rawResponse);
+            const result = JSON.parse(rawResponse); // Intenta parsear como JSON
+
             if (result.success) {
                 alert("Alerta enviada correctamente.");
                 addAlertToMap(result.alert);
