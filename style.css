@@ -29,7 +29,7 @@
 
 .map {
     height: 400px;
-    margin: 0 5%;
+    margin: 20px 5% 0; /* Ajuste para separar el mapa del header */
 }
 
 .alert-form, .auth-form {

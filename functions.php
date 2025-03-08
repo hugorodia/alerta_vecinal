@@ -69,7 +69,7 @@ function sendVerificationEmail($email, $nombre, $token) {
     $emailObj->addContent(
         "text/html",
         "Hola $nombre,<br><br>Gracias por registrarte en Alerta Vecinal. Por favor, verifica tu cuenta haciendo clic en el siguiente enlace:<br><br>" .
-        "<a href='https://alerta-vecinal.onrender.com/verify?token=$token'>Verificar mi cuenta</a><br><br>" .
+        "<a href='https://alerta-vecinal.onrender.com/?action=verify&token=$token'>Verificar mi cuenta</a><br><br>" .
         "Si no te registraste, ignora este correo.<br>Equipo de Alerta Vecinal"
     );
 
@@ -88,8 +88,6 @@ function sendVerificationEmail($email, $nombre, $token) {
         return false;
     }
 }
-
-session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -151,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!$user['is_verified']) {
                         die(json_encode(['success' => false, 'error' => 'Debes verificar tu correo antes de iniciar sesión']));
                     }
-                    $_SESSION['user_id'] = $user['id'];
                     die(json_encode(['success' => true, 'user_id' => $user['id']]));
                 } else {
                     die(json_encode(['success' => false, 'error' => 'Correo o contraseña incorrectos']));
@@ -163,13 +160,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'logout':
-            session_unset();
-            session_destroy();
-            die(json_encode(['success' => true, 'message' => 'Sesión cerrada']));
+            die(json_encode(['success' => true, 'message' => 'Sesión cerrada en el cliente']));
             break;
 
         case 'registrarAlerta':
-            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
+            $user_id = $data['user_id'] ?? '';
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para enviar alertas']));
             }
@@ -263,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'eliminarAlerta':
-            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
+            $user_id = $data['user_id'] ?? '';
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión']));
             }
@@ -286,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'obtenerHistorialAlertas':
-            $user_id = $_SESSION['user_id'] ?? $data['user_id'] ?? '';
+            $user_id = $data['user_id'] ?? '';
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión para ver el historial']));
             }
@@ -305,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $params['fechaInicio'] = $fechaInicio;
                     $params['fechaFin'] = $fechaFin;
                 }
+                $query .= " ORDER BY a.fecha DESC"; // Ordenar por fecha descendente
                 $stmt = $conn->prepare($query);
                 $stmt->execute($params);
                 $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -318,19 +314,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         default:
             die(json_encode(['success' => false, 'error' => 'Acción no válida']));
     }
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token'])) {
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'verify' && isset($_GET['token'])) {
     $token = $_GET['token'];
     $conn = getDBConnection();
     error_log("Verificando token: $token");
     try {
-        $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
+        $stmt = $conn->prepare("SELECT id, email FROM users WHERE verification_token = :token AND is_verified = FALSE");
         $stmt->execute(['token' => $token]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($user) {
             $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
             $stmt->execute(['id' => $user['id']]);
-            error_log("Usuario verificado: ID " . $user['id']);
-            die("<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes iniciar sesión en Alerta Vecinal.</p>");
+            error_log("Usuario verificado: ID " . $user['id'] . ", Email: " . $user['email']);
+            die("<h1>Cuenta verificada</h1><p>Tu cuenta ha sido verificada. Puedes <a href='https://alerta-vecinal.onrender.com'>iniciar sesión</a> en Alerta Vecinal.</p>");
         } else {
             error_log("Token no encontrado o ya verificado: $token");
             die("<h1>Error</h1><p>Token inválido o cuenta ya verificada.</p>");
