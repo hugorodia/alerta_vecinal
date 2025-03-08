@@ -49,27 +49,23 @@ session_start();
                 <label for="history-end">Hasta:</label>
                 <input type="date" id="history-end" disabled>
             </div>
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <button id="logout-btn" class="auth-button">Cerrar Sesión</button>
-            <?php endif; ?>
+            <button id="logout-btn" class="auth-button" style="display: none;">Cerrar Sesión</button>
         </section>
-        <?php if (!isset($_SESSION['user_id'])): ?>
-            <section class="auth-form">
-                <h2>Registro / Inicio de Sesión</h2>
-                <form id="register-form">
-                    <label for="email">Correo:</label>
-                    <input type="email" id="email" name="email" required>
-                    <label for="nombre">Nombre:</label>
-                    <input type="text" id="nombre" name="nombre" required>
-                    <label for="apellido">Apellido:</label>
-                    <input type="text" id="apellido" name="apellido" required>
-                    <label for="password">Contraseña:</label>
-                    <input type="password" id="password" name="password" required>
-                    <button type="submit" class="auth-button">Registrarse</button>
-                    <button type="button" id="login-btn" class="auth-button">Iniciar Sesión</button>
-                </form>
-            </section>
-        <?php endif; ?>
+        <section class="auth-form" style="display: none;">
+            <h2>Registro / Inicio de Sesión</h2>
+            <form id="register-form">
+                <label for="email">Correo:</label>
+                <input type="email" id="email" name="email" required>
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" required>
+                <label for="apellido">Apellido:</label>
+                <input type="text" id="apellido" name="apellido" required>
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" name="password" required>
+                <button type="submit" class="auth-button">Registrarse</button>
+                <button type="button" id="login-btn" class="auth-button">Iniciar Sesión</button>
+            </form>
+        </section>
     </main>
     <footer class="footer">
         <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>
@@ -87,6 +83,6 @@ session_start();
             });
         }
     </script>
-    <script src="script.js?v=1.1"></script>
+    <script src="script.js?v=1.2"></script>
 </body>
 </html>
