@@ -1,5 +1,4 @@
 <?php
-// Evitar cualquier salida antes de los encabezados
 ob_start();
 header('Content-Type: application/json');
 
@@ -245,16 +244,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sessionToken = bin2hex(random_bytes(16));
         $stmt = $conn->prepare("UPDATE users SET session_token = :session_token WHERE id = :id");
         $stmt->execute(['session_token' => $sessionToken, 'id' => $user['id']]);
-        $redirectUrl = "https://alerta-vecinal.onrender.com/?session_token=$sessionToken";
-        error_log("Verificación exitosa para user_id: {$user['id']}, redirigiendo a: $redirectUrl");
-        ob_end_clean(); // Limpiar cualquier salida previa
-        header("Location: $redirectUrl", true, 302);
+        error_log("Verificación exitosa para user_id: {$user['id']}, session_token generado: $sessionToken");
+        // Devolver el session_token como JSON en lugar de redirigir
+        ob_end_clean();
+        echo json_encode(['success' => true, 'session_token' => $sessionToken]);
         exit;
     } else {
         error_log("Token inválido o ya verificado: $token");
         ob_end_clean();
         http_response_code(400);
-        die(json_encode(['success' => false, 'error' => 'Token inválido o ya verificado']));
+        echo json_encode(['success' => false, 'error' => 'Token inválido o ya verificado']);
+        exit;
     }
 } else {
     ob_end_clean();

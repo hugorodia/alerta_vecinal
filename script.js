@@ -169,9 +169,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     const sessionToken = urlParams.get('session_token');
+    const verifyAction = urlParams.get('action');
+    const verifyToken = urlParams.get('token');
 
     console.log('URL actual:', window.location.href);
-    if (sessionToken) {
+
+    if (verifyAction === 'verify' && verifyToken) {
+        console.log('Detectado intento de verificación con token:', verifyToken);
+        fetch(`https://alerta-vecinal.onrender.com/functions.php?action=verify&token=${verifyToken}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Error en la solicitud: ' + response.status);
+            return response.json();
+        })
+        .then(result => {
+            console.log('Respuesta de verificación:', result);
+            if (result.success && result.session_token) {
+                // Usar el session_token para auto-login
+                fetch('https://alerta-vecinal.onrender.com/functions.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'auto_login', session_token: result.session_token })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Error en auto-login: ' + response.status);
+                    return response.json();
+                })
+                .then(autoLoginResult => {
+                    console.log('Respuesta de auto_login:', autoLoginResult);
+                    if (autoLoginResult.success) {
+                        localStorage.setItem('user_id', autoLoginResult.user_id);
+                        document.querySelector('.auth-form').style.display = 'none';
+                        document.getElementById('logout-btn').style.display = 'block';
+                        window.history.replaceState({}, document.title, '/');
+                        console.log('Auto-login exitoso con user_id:', autoLoginResult.user_id);
+                    } else {
+                        alert('Error en auto-login: ' + autoLoginResult.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en auto-login:', error);
+                    alert('Error al intentar iniciar sesión automáticamente');
+                });
+            } else {
+                alert('Error en verificación: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error en verificación:', error);
+            alert('Error al verificar el token');
+        });
+    } else if (sessionToken) {
         console.log('Session token detectado:', sessionToken);
         fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
@@ -199,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error al intentar iniciar sesión automáticamente');
         });
     } else {
-        console.log('No se detectó session_token en la URL');
+        console.log('No se detectó session_token ni intento de verificación en la URL');
     }
 
     const userId = localStorage.getItem('user_id');
@@ -207,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     initMap();
 
-    if (userId && !sessionToken) {
+    if (userId && !sessionToken && !verifyToken) {
         registerFormSection.style.display = 'none';
         logoutBtn.style.display = 'block';
-    } else if (!sessionToken) {
+    } else if (!sessionToken && !verifyToken) {
         registerFormSection.style.display = 'block';
         logoutBtn.style.display = 'none';
     }
