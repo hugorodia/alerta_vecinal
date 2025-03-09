@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
+    const alertSound = new Audio('/public/alert.wav'); // Ruta al archivo de sonido
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         map = L.map('map').setView([lat, lng], 13);
@@ -12,7 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             addAlertToMap(data);
-            if (document.getElementById('enable-notifications').checked) showNotification(data);
+            if (document.getElementById('enable-notifications').checked) {
+                showNotification(data);
+                playAlertSound(); // Reproducir sonido
+            }
             updateAlertCount();
         });
 
@@ -158,6 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function playAlertSound() {
+        alertSound.play().catch(error => {
+            console.error('Error al reproducir el sonido:', error);
+        });
+    }
+
     function updateAlertCount() {
         alertCount++;
         const counter = document.getElementById('alert-counter') || document.createElement('span');
@@ -187,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(result => {
             console.log('Respuesta de verificación:', result);
             if (result.success && result.session_token) {
-                // Usar el session_token para auto-login
                 fetch('https://alerta-vecinal.onrender.com/functions.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
