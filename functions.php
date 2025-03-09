@@ -44,6 +44,7 @@ function sendVerificationEmail($email, $nombre, $token) {
         "text/html",
         "Hola $nombre,<br><br>Verifica tu cuenta:<br><br>" .
         "<a href='https://alerta-vecinal.onrender.com/?action=verify&token=$token' target='_self'>Verificar mi cuenta</a><br><br>" .
+        "O usa este token manualmente: $token<br><br>" .
         "Equipo de Alerta Vecinal"
     );
     $sendgrid = new \SendGrid($sendgridApiKey);
@@ -230,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->exec("ALTER SEQUENCE users_id_seq RESTART WITH 1");
             die(json_encode(['success' => true]));
             break;
-    } // Cierre del switch
+    }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'verify' && isset($_GET['token'])) {
     $token = $_GET['token'];
     $conn = getDBConnection();
@@ -245,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute(['session_token' => $sessionToken, 'id' => $user['id']]);
         $redirectUrl = "https://alerta-vecinal.onrender.com/?session_token=$sessionToken";
         error_log("Verificación exitosa para user_id: {$user['id']}, redirigiendo a: $redirectUrl");
-        echo "<script>window.location.replace('$redirectUrl');</script>";
+        header("Location: $redirectUrl", true, 302);
         exit;
     } else {
         error_log("Token inválido o ya verificado: $token");

@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function sendAlert(tipo, latitud, longitud, radio) {
         const userId = localStorage.getItem('user_id');
         if (!userId) return alert("Debes iniciar sesión.");
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'registrarAlerta', tipo, latitud, longitud, radio, user_id: userId })
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'obtenerAlertasCercanas', latitud, longitud, radio })
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteAlert(alertId) {
         const userId = localStorage.getItem('user_id');
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'eliminarAlerta', id: alertId, user_id: userId })
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body.fechaInicio = fechaInicio + ' 00:00:00';
                 body.fechaFin = fechaFin + ' 23:59:59';
             }
-            const response = await fetch('functions.php', {
+            const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -173,12 +173,15 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('URL actual:', window.location.href);
     if (sessionToken) {
         console.log('Session token detectado:', sessionToken);
-        fetch('functions.php', {
+        fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'auto_login', session_token: sessionToken })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Error en la solicitud: ' + response.status);
+            return response.json();
+        })
         .then(result => {
             console.log('Respuesta de auto_login:', result);
             if (result.success) {
@@ -191,7 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Error en auto-login: ' + result.error);
             }
         })
-        .catch(error => console.error('Error en fetch:', error));
+        .catch(error => {
+            console.error('Error en fetch:', error);
+            alert('Error al intentar iniciar sesión automáticamente');
+        });
     } else {
         console.log('No se detectó session_token en la URL');
     }
@@ -215,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nombre = document.getElementById('nombre').value;
         const apellido = document.getElementById('apellido').value;
         const password = document.getElementById('password').value;
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'register', email, nombre, apellido, password })
@@ -227,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-btn')?.addEventListener('click', async () => {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'login', email, password })
@@ -244,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        const response = await fetch('functions.php', {
+        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'logout' })
