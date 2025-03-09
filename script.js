@@ -170,7 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionToken = urlParams.get('session_token');
 
+    console.log('URL actual:', window.location.href);
     if (sessionToken) {
+        console.log('Session token detectado:', sessionToken);
         fetch('functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -178,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(response => response.json())
         .then(result => {
+            console.log('Respuesta de auto_login:', result);
             if (result.success) {
                 localStorage.setItem('user_id', result.user_id);
                 document.querySelector('.auth-form').style.display = 'none';
@@ -187,7 +190,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 alert('Error en auto-login: ' + result.error);
             }
-        });
+        })
+        .catch(error => console.error('Error en fetch:', error));
+    } else {
+        console.log('No se detectó session_token en la URL');
     }
 
     const userId = localStorage.getItem('user_id');
