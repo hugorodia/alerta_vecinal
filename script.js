@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
-    const alertSound = new Audio('/public/alert.wav'); // Ruta al archivo de sonido
+    const alertSound = new Audio('/public/alerta.wav'); // Corregido a .wav
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         map = L.map('map').setView([lat, lng], 13);
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addAlertToMap(data);
             if (document.getElementById('enable-notifications').checked) {
                 showNotification(data);
-                playAlertSound(); // Reproducir sonido
+                playAlertSound();
             }
             updateAlertCount();
         });
@@ -183,6 +183,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const verifyToken = urlParams.get('token');
 
     console.log('URL actual:', window.location.href);
+
+    // Restaurar el estado de las notificaciones desde localStorage
+    const enableNotificationsCheckbox = document.getElementById('enable-notifications');
+    if (enableNotificationsCheckbox) {
+        const savedNotificationState = localStorage.getItem('enableNotifications');
+        if (savedNotificationState !== null) {
+            enableNotificationsCheckbox.checked = savedNotificationState === 'true';
+        }
+        // Guardar el estado cuando el usuario lo cambie
+        enableNotificationsCheckbox.addEventListener('change', () => {
+            localStorage.setItem('enableNotifications', enableNotificationsCheckbox.checked);
+        });
+    }
 
     if (verifyAction === 'verify' && verifyToken) {
         console.log('Detectado intento de verificación con token:', verifyToken);
