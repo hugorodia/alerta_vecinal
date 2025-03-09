@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
-    const alertSound = new Audio('/public/alerta.wav'); // Usando .wav
+    const alertSound = new Audio('/public/alert.wav'); // Usando .wav
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         map = L.map('map').setView([lat, lng], 13);
