@@ -1,10 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM cargado, inicializando...');
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
-    let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
+    let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
     const alertSound = new Audio('/public/alert.wav');
 
-    // Desbloquear audio con la primera interacción
     const unlockAudio = () => {
         alertSound.play().then(() => {
             console.log('Audio desbloqueado con éxito');
@@ -28,8 +27,38 @@ document.addEventListener('DOMContentLoaded', () => {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', { cluster: 'us2', encrypted: true });
-        const channel = pusher.subscribe('alert-channel');
+        setupPusher();
+
+        // Heartbeat para mantener la conexión viva
+        setInterval(() => {
+            console.log('Verificando conexión con Pusher...');
+            if (!pusher || pusher.connection.state !== 'connected') {
+                console.log('Reconectando Pusher...');
+                if (pusher) pusher.disconnect();
+                setupPusher();
+            } else {
+                console.log('Conexión con Pusher sigue activa');
+            }
+        }, 300000); // Cada 5 minutos (300,000 ms)
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const { latitude, longitude } = pos.coords;
+                console.log('Geolocalización obtenida:', latitude, longitude);
+                map.setView([latitude, longitude], 13);
+                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+                fetchNearbyAlerts(latitude, longitude, 10);
+            },
+            err => {
+                console.log('Geolocalización falló o no permitida:', err.message);
+                fetchNearbyAlerts(lat, lng, 10);
+            }
+        );
+    }
+
+    function setupPusher() {
+        pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', { cluster: 'us2', encrypted: true });
+        channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
             addAlertToMapWithAnimation(data);
@@ -37,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Notificaciones habilitadas:', notificationsEnabled);
             if (localUserId !== data.user_id && notificationsEnabled) {
-                console.log('Usuario no es emisor y notificaciones habilitADAS');
+                console.log('Usuario no es emisor y notificaciones habilitadas');
                 if (userMarker) {
                     const userLocation = userMarker.getLatLng();
                     const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
@@ -57,20 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             updateAlertCount();
         });
-
-        navigator.geolocation.getCurrentPosition(
-            pos => {
-                const { latitude, longitude } = pos.coords;
-                console.log('Geolocalización obtenida:', latitude, longitude);
-                map.setView([latitude, longitude], 13);
-                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
-                fetchNearbyAlerts(latitude, longitude, 10);
-            },
-            err => {
-                console.log('Geolocalización falló o no permitida:', err.message);
-                fetchNearbyAlerts(lat, lng, 10);
-            }
-        );
+        pusher.connection.bind('connected', () => console.log('Conectado a Pusher'));
+        pusher.connection.bind('disconnected', () => console.log('Desconectado de Pusher'));
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -122,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         marker.on('popupopen', () => {
             document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
             setTimeout(() => {
-                marker.closePopup(); // Expirar después de 24 horas
+                marker.closePopup();
             }, 86400000);
         });
     }
@@ -239,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(notificationDiv);
         setTimeout(() => {
             if (notificationDiv) notificationDiv.remove();
-        }, 86400000); // 24 horas
+        }, 86400000);
     }
 
     function playAlertSound() {
