@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
-            addAlertToMapWithAnimation(data); // Usar versión con animación para nuevas alertas
+            addAlertToMapWithAnimation(data);
             const localUserId = localStorage.getItem('user_id');
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Notificaciones habilitadas:', notificationsEnabled);
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
         const popupContent = `
             <div id="alert-popup-${alert.id}" style="display: flex; flex-direction: column; align-items: center;">
-                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 200px; margin-bottom: 10px;"></video>
+                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 150px; margin-bottom: 10px;"></video>
                 <div style="text-align: center;">
                     <b>Tipo:</b> ${alert.tipo}<br>
                     <b>Radio:</b> ${alert.radio} km<br>
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ action: 'obtenerAlertasCercanas', latitud, longitud, radio })
         });
         const result = await response.json();
-        if (result.success) result.alerts.forEach(addAlertToMapWithAnimation); // Usar versión con animación
+        if (result.success) result.alerts.forEach(addAlertToMapWithAnimation);
     }
 
     async function deleteAlert(alertId) {
