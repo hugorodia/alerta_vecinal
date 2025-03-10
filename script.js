@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Notificaciones habilitadas:', notificationsEnabled);
             if (localUserId !== data.user_id && notificationsEnabled) {
-                console.log('Usuario no es emisor y notificaciones habilitadas');
+                console.log('Usuario no es emisor y notificaciones habilitADAS');
                 if (userMarker) {
                     const userLocation = userMarker.getLatLng();
                     const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationDiv.innerHTML = `
             <b>Nueva Alerta</b><br>
             <b>Tipo:</b> ${alert.tipo}<br>
-            <b>Fecha:</b> ${new Date(alert.fecha). brevetLocaleString()}<br>
+            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
             <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
             <video src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
             <button onclick="this.parentElement.remove()">Cerrar</button>
@@ -243,9 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function playAlertSound() {
-        alertSound.play().catch(error => {
-            console.error('Error al reproducir el sonido:', error);
-        });
+        console.log('Intentando reproducir alert.wav');
+        alertSound.play()
+            .then(() => console.log('Sonido reproducido con éxito'))
+            .catch(error => console.error('Error al reproducir el sonido:', error.message));
     }
 
     function updateAlertCount() {
