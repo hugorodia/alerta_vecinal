@@ -3,6 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
     const alertSound = new Audio('/public/alert.wav');
 
+    // Desbloquear audio con la primera interacción
+    const unlockAudio = () => {
+        alertSound.play().then(() => {
+            console.log('Audio desbloqueado con éxito');
+            alertSound.pause(); // Pausar para no molestar al usuario
+            alertSound.currentTime = 0; // Reiniciar
+        }).catch(error => {
+            console.error('Error al desbloquear audio:', error);
+        });
+        document.removeEventListener('click', unlockAudio); // Solo una vez
+    };
+    document.addEventListener('click', unlockAudio);
+
     function initMap(lat = -34.6037, lng = -58.3816) {
         map = L.map('map').setView([lat, lng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -12,30 +25,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const pusher = new Pusher(window.PUSHER_KEY || '2c963fd334205de07cf7', { cluster: 'us2', encrypted: true });
         const channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
-            addAlertToMap(data);
-            const localUserId = localStorage.getItem('user_id');
             console.log('Alerta recibida:', data);
-            if (localUserId !== data.user_id && document.getElementById('enable-notifications').checked) {
-                console.log('Usuario no es emisor y notificaciones habilitadas');
-                if (userMarker) {
-                    const userLocation = userMarker.getLatLng();
-                    const distance = calculateDistance(
-                        userLocation.lat,
-                        userLocation.lng,
-                        data.latitud,
-                        data.longitud
-                    );
-                    console.log('Distancia calculada:', distance, 'Radio:', data.radio);
-                    if (distance <= data.radio) {
-                        console.log('Dentro del radio, mostrando notificación y sonido');
-                        showNotification(data);
-                        playAlertSound();
-                    } else {
-                        console.log('Fuera del radio, no se reproduce sonido');
-                    }
-                } else {
-                    console.log('userMarker no definido, no se calcula distancia');
-                }
+            addAlertToMap(data); // Mostrar en el mapa siempre
+            const localUserId = localStorage.getItem('user_id');
+            const notificationsEnabled = document.getElementById('enable-notifications').checked;
+            console.log('Notificaciones habilitadas:', notificationsEnabled);
+            if (localUserId !== data.user_id && notificationsEnabled) {
+                console.log('Usuario no es emisor, mostrando notificación y sonido');
+                showNotification(data);
+                playAlertSound();
             } else {
                 console.log('Condición no cumplida: usuario es emisor o notificaciones deshabilitadas');
             }
@@ -56,14 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Radio de la Tierra en km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                   Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; // Distancia en km
+        return R * c;
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
