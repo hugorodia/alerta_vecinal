@@ -14,9 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
         channel.bind('new-alert', data => {
             addAlertToMap(data);
             const localUserId = localStorage.getItem('user_id');
-            // Solo procesar si no es el emisor
+            console.log('Alerta recibida:', data);
             if (localUserId !== data.user_id && document.getElementById('enable-notifications').checked) {
-                // Verificar distancia si userMarker está definido
+                console.log('Usuario no es emisor y notificaciones habilitadas');
                 if (userMarker) {
                     const userLocation = userMarker.getLatLng();
                     const distance = calculateDistance(
@@ -25,12 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         data.latitud,
                         data.longitud
                     );
-                    // Mostrar notificación y sonido solo si está dentro del radio
+                    console.log('Distancia calculada:', distance, 'Radio:', data.radio);
                     if (distance <= data.radio) {
+                        console.log('Dentro del radio, mostrando notificación y sonido');
                         showNotification(data);
                         playAlertSound();
+                    } else {
+                        console.log('Fuera del radio, no se reproduce sonido');
                     }
+                } else {
+                    console.log('userMarker no definido, no se calcula distancia');
                 }
+            } else {
+                console.log('Condición no cumplida: usuario es emisor o notificaciones deshabilitadas');
             }
             updateAlertCount();
         });
@@ -48,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // Función para calcular la distancia en km
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371; // Radio de la Tierra en km
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -211,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('URL actual:', window.location.href);
 
-    // Restaurar el estado de las notificaciones desde localStorage
     const enableNotificationsCheckbox = document.getElementById('enable-notifications');
     if (enableNotificationsCheckbox) {
         const savedNotificationState = localStorage.getItem('enableNotifications');
