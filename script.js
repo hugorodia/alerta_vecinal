@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
-            addAlertToMap(data);
+            addAlertToMapWithAnimation(data); // Usar versión con animación para nuevas alertas
             const localUserId = localStorage.getItem('user_id');
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Notificaciones habilitadas:', notificationsEnabled);
@@ -107,38 +107,23 @@ document.addEventListener('DOMContentLoaded', () => {
             icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
         }).addTo(map);
         const popupContent = `
-            <div id="alert-popup-${alert.id}">
-                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 200px;"></video>
-                <b>Tipo:</b> ${alert.tipo}<br>
-                <b>Radio:</b> ${alert.radio} km<br>
-                <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-                <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-                ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
+            <div id="alert-popup-${alert.id}" style="display: flex; flex-direction: column; align-items: center;">
+                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 200px; margin-bottom: 10px;"></video>
+                <div style="text-align: center;">
+                    <b>Tipo:</b> ${alert.tipo}<br>
+                    <b>Radio:</b> ${alert.radio} km<br>
+                    <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+                    <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
+                    ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
+                </div>
             </div>
         `;
         marker.bindPopup(popupContent).openPopup();
         marker.on('popupopen', () => {
             document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
             setTimeout(() => {
-                const popupDiv = document.getElementById(`alert-popup-${alert.id}`);
-                if (popupDiv) marker.closePopup(); // Expirar después de 24 horas
+                marker.closePopup(); // Expirar después de 24 horas
             }, 86400000);
-        });
-    }
-
-    function addAlertToMap(alert) {
-        const marker = L.marker([alert.latitud, alert.longitud], {
-            icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
-        }).addTo(map);
-        marker.bindPopup(`
-            <b>Tipo:</b> ${alert.tipo}<br>
-            <b>Radio:</b> ${alert.radio} km<br>
-            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-            <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-            ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
-        `).openPopup();
-        marker.on('popupopen', () => {
-            document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
         });
     }
 
@@ -165,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ action: 'obtenerAlertasCercanas', latitud, longitud, radio })
         });
         const result = await response.json();
-        if (result.success) result.alerts.forEach(addAlertToMap);
+        if (result.success) result.alerts.forEach(addAlertToMapWithAnimation); // Usar versión con animación
     }
 
     async function deleteAlert(alertId) {
