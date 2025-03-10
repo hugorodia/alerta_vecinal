@@ -1,4 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
+    "use strict";
+
     console.log('DOM cargado, inicializando...');
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
@@ -38,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.log('Conexión con Pusher sigue activa');
             }
-        }, 300000); // Cada 5 minutos
+        }, 300000);
 
         navigator.geolocation.getCurrentPosition(
             pos => {
@@ -339,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         alert('Error en auto-login: ' + autoLoginResult.error);
                     }
                 })
-                .catch(error => console.error('Error en auto-login:', error));
+                .catch(error => => console.error('Error en auto-login:', error));
             } else {
                 alert('Error en verificación: ' + result.error);
             }
@@ -445,6 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
-});
+})();
 
 console.log('script.js cargado completamente');
