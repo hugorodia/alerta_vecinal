@@ -42,12 +42,16 @@
     margin: 5px 0;
 }
 
-.alert-form input, .auth-form input, .alert-form select {
+.alert-form input, .auth-form select {
     width: 80%;
     max-width: 300px;
     padding: 5px;
     margin: 0 auto;
     display: block;
+}
+
+#alert-radius {
+    margin-bottom: 5px;
 }
 
 .alert-button {

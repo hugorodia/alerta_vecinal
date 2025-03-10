@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationDiv.innerHTML = `
             <b>Nueva Alerta</b><br>
             <b>Tipo:</b> ${alert.tipo}<br>
-            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+            <b>Fecha:</b> ${new Date(alert.fecha). brevetLocaleString()}<br>
             <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
             <video src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
             <button onclick="this.parentElement.remove()">Cerrar</button>
