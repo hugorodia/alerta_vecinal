@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupPusher();
 
-        // Heartbeat para mantener la conexión viva
         setInterval(() => {
             console.log('Verificando conexión con Pusher...');
             if (!pusher || pusher.connection.state !== 'connected') {
@@ -39,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.log('Conexión con Pusher sigue activa');
             }
-        }, 300000); // Cada 5 minutos (300,000 ms)
+        }, 300000); // Cada 5 minutos
 
         navigator.geolocation.getCurrentPosition(
             pos => {
@@ -64,22 +63,41 @@ document.addEventListener('DOMContentLoaded', () => {
             addAlertToMapWithAnimation(data);
             const localUserId = localStorage.getItem('user_id');
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
+            console.log('Local User ID:', localUserId, 'Alert User ID:', data.user_id);
             console.log('Notificaciones habilitadas:', notificationsEnabled);
+            if (!localUserId) {
+                console.log('No hay user_id local, usuario no autenticado');
+                return;
+            }
             if (localUserId !== data.user_id && notificationsEnabled) {
                 console.log('Usuario no es emisor y notificaciones habilitadas');
                 if (userMarker) {
                     const userLocation = userMarker.getLatLng();
                     const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
+                    console.log('Ubicación del usuario:', userLocation);
                     console.log('Distancia calculada:', distance, 'Radio:', data.radio);
                     if (distance <= data.radio) {
-                        console.log('Dentro del radio, mostrando notificación, animación y sonido');
+                        console.log('Dentro del radio, mostrando notificación y reproduciendo sonido');
                         showNotification(data);
                         playAlertSound();
                     } else {
                         console.log('Fuera del radio, no se reproduce sonido ni animación');
                     }
                 } else {
-                    console.log('userMarker no definido, no se calcula distancia');
+                    console.log('userMarker no definido, intentando obtener geolocalización nuevamente');
+                    navigator.geolocation.getCurrentPosition(
+                        pos => {
+                            const { latitude, longitude } = pos.coords;
+                            userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación");
+                            const distance = calculateDistance(latitude, longitude, data.latitud, data.longitud);
+                            if (distance <= data.radio) {
+                                console.log('Geolocalización recuperada, dentro del radio, reproduciendo sonido');
+                                showNotification(data);
+                                playAlertSound();
+                            }
+                        },
+                        err => console.error('No se pudo recuperar geolocalización:', err.message)
+                    );
                 }
             } else {
                 console.log('Condición no cumplida: usuario es emisor o notificaciones deshabilitadas');
