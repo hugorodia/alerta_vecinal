@@ -14,10 +14,23 @@ document.addEventListener('DOMContentLoaded', () => {
         channel.bind('new-alert', data => {
             addAlertToMap(data);
             const localUserId = localStorage.getItem('user_id');
-            // Solo reproducir sonido y notificación si el usuario local no es el emisor
+            // Solo procesar si no es el emisor
             if (localUserId !== data.user_id && document.getElementById('enable-notifications').checked) {
-                showNotification(data);
-                playAlertSound();
+                // Verificar distancia si userMarker está definido
+                if (userMarker) {
+                    const userLocation = userMarker.getLatLng();
+                    const distance = calculateDistance(
+                        userLocation.lat,
+                        userLocation.lng,
+                        data.latitud,
+                        data.longitud
+                    );
+                    // Mostrar notificación y sonido solo si está dentro del radio
+                    if (distance <= data.radio) {
+                        showNotification(data);
+                        playAlertSound();
+                    }
+                }
             }
             updateAlertCount();
         });
@@ -33,6 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchNearbyAlerts(lat, lng, 10);
             }
         );
+    }
+
+    // Función para calcular la distancia en km
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radio de la Tierra en km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distancia en km
     }
 
     async function sendAlert(tipo, latitud, longitud, radio) {
