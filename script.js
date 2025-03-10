@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
-            addAlertToMapWithAnimation(result.alert); // Usar versión con animación
+            addAlertToMapWithAnimation(result.alert);
             addRadarAnimation(latitud, longitud, radio);
         } else {
             alert("Error: " + result.error);
@@ -108,12 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
         const popupContent = `
             <div id="alert-popup-${alert.id}">
+                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 200px;"></video>
                 <b>Tipo:</b> ${alert.tipo}<br>
                 <b>Radio:</b> ${alert.radio} km<br>
                 <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
                 <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
                 ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
-                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
             </div>
         `;
         marker.bindPopup(popupContent).openPopup();
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
             setTimeout(() => {
                 const popupDiv = document.getElementById(`alert-popup-${alert.id}`);
-                if (popupDiv) popupDiv.remove(); // Expirar después de 24 horas (86400000 ms)
+                if (popupDiv) marker.closePopup(); // Expirar después de 24 horas
             }, 86400000);
         });
     }
