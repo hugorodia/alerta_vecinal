@@ -42,17 +42,25 @@
             }
         }, 300000);
 
+        updateUserLocation(); // Inicializar userMarker al cargar
+    }
+
+    function updateUserLocation() {
         navigator.geolocation.getCurrentPosition(
             pos => {
                 const { latitude, longitude } = pos.coords;
                 console.log('Geolocalización obtenida:', latitude, longitude);
                 map.setView([latitude, longitude], 13);
-                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+                if (!userMarker) {
+                    userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación").openPopup();
+                } else {
+                    userMarker.setLatLng([latitude, longitude]);
+                }
                 fetchNearbyAlerts(latitude, longitude, 10);
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
-                fetchNearbyAlerts(lat, lng, 10);
+                fetchNearbyAlerts(-34.6037, -58.3816, 10);
             }
         );
     }
@@ -90,10 +98,15 @@
                     navigator.geolocation.getCurrentPosition(
                         pos => {
                             const { latitude, longitude } = pos.coords;
-                            userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación");
+                            console.log('Geolocalización recuperada:', latitude, longitude);
+                            if (!userMarker) {
+                                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación");
+                            } else {
+                                userMarker.setLatLng([latitude, longitude]);
+                            }
                             const distance = calculateDistance(latitude, longitude, data.latitud, data.longitud);
                             if (distance <= data.radio) {
-                                console.log('Geolocalización recuperada, dentro del radio, reproduciendo sonido');
+                                console.log('Dentro del radio tras recuperación, reproduciendo sonido');
                                 showNotification(data);
                                 playAlertSound();
                             }
@@ -441,7 +454,11 @@
         e.preventDefault();
         const tipo = document.getElementById('alert-type').value;
         const radio = parseInt(document.getElementById('alert-radius').value, 10);
-        if (!userMarker) return alert("Habilita la geolocalización.");
+        if (!userMarker) {
+            console.log('userMarker no definido al enviar alerta, actualizando ubicación');
+            updateUserLocation();
+            return alert("Habilita la geolocalización y vuelve a intentarlo.");
+        }
         const { lat, lng } = userMarker.getLatLng();
         await sendAlert(tipo, lat, lng, radio);
     });
