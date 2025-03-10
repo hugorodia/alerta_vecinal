@@ -37,11 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
                     console.log('Distancia calculada:', distance, 'Radio:', data.radio);
                     if (distance <= data.radio) {
-                        console.log('Dentro del radio, mostrando notificación y sonido');
+                        console.log('Dentro del radio, mostrando notificación, animación y sonido');
                         showNotification(data);
                         playAlertSound();
                     } else {
-                        console.log('Fuera del radio, no se reproduce sonido');
+                        console.log('Fuera del radio, no se reproduce sonido ni animación');
                     }
                 } else {
                     console.log('userMarker no definido, no se calcula distancia');
@@ -204,6 +204,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: '/public/favicon.ico'
             });
         }
+        // Mostrar la animación de alerta
+        showAlertAnimation();
+    }
+
+    function showAlertAnimation() {
+        // Crear el elemento de video si no existe
+        let alertVideo = document.getElementById('alert-video');
+        if (!alertVideo) {
+            alertVideo = document.createElement('video');
+            alertVideo.id = 'alert-video';
+            alertVideo.src = '/public/alert-animation.mp4';
+            alertVideo.autoplay = true;
+            alertVideo.loop = false;
+            alertVideo.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                max-width: 80%;
+                max-height: 80%;
+            `;
+            document.body.appendChild(alertVideo);
+        } else {
+            alertVideo.currentTime = 0; // Reiniciar si ya existe
+            alertVideo.play();
+        }
+
+        // Ocultar el video cuando termine
+        alertVideo.onended = () => {
+            alertVideo.style.display = 'none';
+        };
+        alertVideo.style.display = 'block'; // Asegurarse de que sea visible al iniciar
     }
 
     function playAlertSound() {
