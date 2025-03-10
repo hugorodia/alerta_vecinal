@@ -341,7 +341,7 @@
                         alert('Error en auto-login: ' + autoLoginResult.error);
                     }
                 })
-                .catch(error => => console.error('Error en auto-login:', error));
+                .catch(error => console.error('Error en auto-login:', error));
             } else {
                 alert('Error en verificación: ' + result.error);
             }
