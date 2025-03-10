@@ -54,8 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.log('Condición no cumplida: usuario es emisor o notificaciones deshabilitadas');
-                // Forzar animación para prueba, quitar después
-                showNotification(data);
             }
             updateAlertCount();
         });
@@ -97,12 +95,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
-            addAlertToMap(result.alert);
+            addAlertToMapWithAnimation(result.alert); // Usar versión con animación
             addRadarAnimation(latitud, longitud, radio);
-            showNotification(result.alert); // Mostrar animación al enviar
         } else {
             alert("Error: " + result.error);
         }
+    }
+
+    function addAlertToMapWithAnimation(alert) {
+        const marker = L.marker([alert.latitud, alert.longitud], {
+            icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
+        }).addTo(map);
+        const popupContent = `
+            <div id="alert-popup-${alert.id}">
+                <b>Tipo:</b> ${alert.tipo}<br>
+                <b>Radio:</b> ${alert.radio} km<br>
+                <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+                <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
+                ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
+                <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
+            </div>
+        `;
+        marker.bindPopup(popupContent).openPopup();
+        marker.on('popupopen', () => {
+            document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
+            setTimeout(() => {
+                const popupDiv = document.getElementById(`alert-popup-${alert.id}`);
+                if (popupDiv) popupDiv.remove(); // Expirar después de 24 horas (86400000 ms)
+            }, 86400000);
+        });
     }
 
     function addAlertToMap(alert) {
@@ -210,53 +231,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showNotification(alert) {
         console.log('Mostrando notificación para alerta:', alert);
-        if (Notification.permission === 'granted') {
-            new Notification('Nueva Alerta', {
-                body: `Tipo: ${alert.tipo}\nFecha: ${new Date(alert.fecha).toLocaleString()}\nEnviado por: ${alert.nombre} ${alert.apellido}`,
-                icon: '/public/favicon.ico'
-            });
-        }
-        showAlertAnimation();
-    }
-
-    function showAlertAnimation() {
-        console.log('Intentando mostrar animación /alert-animation.mp4');
-        let alertVideo = document.getElementById('alert-video');
-        if (!alertVideo) {
-            alertVideo = document.createElement('video');
-            alertVideo.id = 'alert-video';
-            alertVideo.src = '/alert-animation.mp4';
-            alertVideo.autoplay = true;
-            alertVideo.loop = false;
-            alertVideo.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 10000; /* Aumentado para asegurar visibilidad */
-                max-width: 80%;
-                max-height: 80%;
-                border: 2px solid red; /* Para depuración */
-            `;
-            document.body.appendChild(alertVideo);
-            console.log('Video creado y añadido al DOM con src:', alertVideo.src);
-        } else {
-            alertVideo.currentTime = 0;
-            alertVideo.play();
-            console.log('Reutilizando video existente');
-        }
-        alertVideo.onended = () => {
-            alertVideo.style.display = 'none';
-            console.log('Animación terminada, ocultada');
-        };
-        alertVideo.onerror = (e) => {
-            console.error('Error al cargar o reproducir alert-animation.mp4:', e);
-        };
-        alertVideo.onloadeddata = () => {
-            console.log('Video cargado correctamente, debería reproducirse');
-        };
-        alertVideo.style.display = 'block';
-        console.log('Video configurado como visible');
+        const notificationDiv = document.createElement('div');
+        notificationDiv.id = `notification-${alert.id}`;
+        notificationDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            z-index: 1000;
+            max-width: 300px;
+        `;
+        notificationDiv.innerHTML = `
+            <b>Nueva Alerta</b><br>
+            <b>Tipo:</b> ${alert.tipo}<br>
+            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
+            <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
+            <video src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
+            <button onclick="this.parentElement.remove()">Cerrar</button>
+        `;
+        document.body.appendChild(notificationDiv);
+        setTimeout(() => {
+            if (notificationDiv) notificationDiv.remove();
+        }, 86400000); // 24 horas
     }
 
     function playAlertSound() {
