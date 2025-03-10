@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0;
-    const alertSound = new Audio('/public/alert.wav'); // Usando .wav
+    const alertSound = new Audio('/public/alert.wav');
 
     function initMap(lat = -34.6037, lng = -58.3816) {
         map = L.map('map').setView([lat, lng], 13);
@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             addAlertToMap(data);
-            if (document.getElementById('enable-notifications').checked) {
+            const localUserId = localStorage.getItem('user_id');
+            // Solo reproducir sonido y notificación si el usuario local no es el emisor
+            if (localUserId !== data.user_id && document.getElementById('enable-notifications').checked) {
                 showNotification(data);
                 playAlertSound();
             }
