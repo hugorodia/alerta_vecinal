@@ -46,7 +46,7 @@
                 } else {
                     userMarker.setLatLng([latitude, longitude]);
                 }
-                fetchNearbyAlerts(latitude, longitude, 10);
+                fetchNearbyAlerts(latitude, longitude, 5); // Cambiado de 10 a 5 km
                 const userId = localStorage.getItem('user_id');
                 if (userId) {
                     fetch('https://alerta-vecinal.onrender.com/functions.php', {
@@ -60,7 +60,7 @@
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
-                fetchNearbyAlerts(-34.6037, -58.3816, 10);
+                fetchNearbyAlerts(-34.6037, -58.3816, 5); // Cambiado de 10 a 5 km
             }
         );
     }
@@ -83,13 +83,13 @@
                 const userLocation = userMarker.getLatLng();
                 const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
                 console.log('Distancia calculada:', distance);
-                if (distance <= 10) {
+                if (distance <= 5) { // Cambiado de 10 a 5 km
                     addAlertToMapWithAnimation(data);
-                    console.log('Dentro de 10 km, notificando');
+                    console.log('Dentro de 5 km, notificando');
                     showNotification(data);
                     playAlertSound();
                 } else {
-                    console.log('Alerta fuera de 10 km, ignorada');
+                    console.log('Alerta fuera de 5 km, ignorada');
                 }
             } else {
                 console.log('Condición no cumplida o usuario es emisor');
@@ -124,7 +124,7 @@
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
             addAlertToMapWithAnimation(result.alert);
-            addRadarAnimation(latitud, longitud, 10); // Fijo en 10 km
+            addRadarAnimation(latitud, longitud, 5); // Cambiado de 10 a 5 km
         } else {
             alert("Error: " + result.error);
         }

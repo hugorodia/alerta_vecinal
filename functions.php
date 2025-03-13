@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nearby_users = [];
                 foreach ($users as $user) {
                     $distance = calculateDistance($latitud, $longitud, $user['last_latitude'], $user['last_longitude']);
-                    if ($distance <= 10) {
+                    if ($distance <= 5) { // Cambiado de 10 a 5 km
                         $nearby_users[] = $user['id'];
                     }
                 }
