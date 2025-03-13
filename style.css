@@ -50,10 +50,6 @@
     display: block;
 }
 
-#alert-radius {
-    margin-bottom: 5px;
-}
-
 .alert-button {
     background-color: #dc3545;
     color: white;

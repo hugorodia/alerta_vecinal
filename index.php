@@ -35,8 +35,6 @@ session_start();
                     <option value="asalto">Asalto</option>
                     <option value="actividad_sospechosa">Actividad Sospechosa</option>
                 </select>
-                <label for="alert-radius">Radio de Alcance (km):</label>
-                <input type="number" id="alert-radius" name="alert-radius" min="1" max="10" value="5" required>
                 <button type="submit" class="alert-button">Enviar Alerta</button>
             </form>
             <div class="notifications">

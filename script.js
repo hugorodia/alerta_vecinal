@@ -30,19 +30,9 @@
         }).addTo(map);
 
         setupPusher();
+        updateUserLocation();
 
-        setInterval(() => {
-            console.log('Verificando conexión con Pusher...');
-            if (!pusher || pusher.connection.state !== 'connected') {
-                console.log('Reconectando Pusher...');
-                if (pusher) pusher.disconnect();
-                setupPusher();
-            } else {
-                console.log('Conexión con Pusher sigue activa');
-            }
-        }, 300000);
-
-        updateUserLocation(); // Inicializar userMarker al cargar
+        setInterval(updateUserLocation, 300000); // Actualizar cada 5 minutos
     }
 
     function updateUserLocation() {
@@ -57,6 +47,16 @@
                     userMarker.setLatLng([latitude, longitude]);
                 }
                 fetchNearbyAlerts(latitude, longitude, 10);
+                const userId = localStorage.getItem('user_id');
+                if (userId) {
+                    fetch('https://alerta-vecinal.onrender.com/functions.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'updateLocation', user_id: userId, latitud: latitude, longitud: longitude })
+                    }).then(response => response.json()).then(result => {
+                        if (result.success) console.log('Ubicación actualizada en servidor');
+                    });
+                }
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
@@ -70,52 +70,30 @@
         channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
-            addAlertToMapWithAnimation(data);
             const localUserId = localStorage.getItem('user_id');
+            if (!localUserId) {
+                console.log('No hay user_id local, ignorando alerta');
+                return;
+            }
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Local User ID:', localUserId, 'Alert User ID:', data.user_id);
             console.log('Notificaciones habilitadas:', notificationsEnabled);
-            if (!localUserId) {
-                console.log('No hay user_id local, usuario no autenticado');
-                return;
-            }
-            if (localUserId !== data.user_id && notificationsEnabled) {
-                console.log('Usuario no es emisor y notificaciones habilitadas');
-                if (userMarker) {
-                    const userLocation = userMarker.getLatLng();
-                    const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
-                    console.log('Ubicación del usuario:', userLocation);
-                    console.log('Distancia calculada:', distance, 'Radio:', data.radio);
-                    if (distance <= data.radio) {
-                        console.log('Dentro del radio, mostrando notificación y reproduciendo sonido');
-                        showNotification(data);
-                        playAlertSound();
-                    } else {
-                        console.log('Fuera del radio, no se reproduce sonido ni animación');
-                    }
+
+            if (localUserId !== data.user_id && notificationsEnabled && userMarker) {
+                const userLocation = userMarker.getLatLng();
+                const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
+                console.log('Distancia calculada:', distance);
+                if (distance <= 10) {
+                    addAlertToMapWithAnimation(data);
+                    console.log('Dentro de 10 km, notificando');
+                    showNotification(data);
+                    playAlertSound();
                 } else {
-                    console.log('userMarker no definido, intentando obtener geolocalización nuevamente');
-                    navigator.geolocation.getCurrentPosition(
-                        pos => {
-                            const { latitude, longitude } = pos.coords;
-                            console.log('Geolocalización recuperada:', latitude, longitude);
-                            if (!userMarker) {
-                                userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Tu ubicación");
-                            } else {
-                                userMarker.setLatLng([latitude, longitude]);
-                            }
-                            const distance = calculateDistance(latitude, longitude, data.latitud, data.longitud);
-                            if (distance <= data.radio) {
-                                console.log('Dentro del radio tras recuperación, reproduciendo sonido');
-                                showNotification(data);
-                                playAlertSound();
-                            }
-                        },
-                        err => console.error('No se pudo recuperar geolocalización:', err.message)
-                    );
+                    console.log('Alerta fuera de 10 km, ignorada');
                 }
             } else {
-                console.log('Condición no cumplida: usuario es emisor o notificaciones deshabilitadas');
+                console.log('Condición no cumplida o usuario es emisor');
+                addAlertToMapWithAnimation(data); // El emisor siempre ve su alerta
             }
             updateAlertCount();
         });
@@ -134,19 +112,19 @@
         return R * c;
     }
 
-    async function sendAlert(tipo, latitud, longitud, radio) {
+    async function sendAlert(tipo, latitud, longitud) {
         const userId = localStorage.getItem('user_id');
         if (!userId) return alert("Debes iniciar sesión.");
         const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'registrarAlerta', tipo, latitud, longitud, radio, user_id: userId })
+            body: JSON.stringify({ action: 'registrarAlerta', tipo, latitud, longitud, user_id: userId })
         });
         const result = await response.json();
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
             addAlertToMapWithAnimation(result.alert);
-            addRadarAnimation(latitud, longitud, radio);
+            addRadarAnimation(latitud, longitud, 10); // Fijo en 10 km
         } else {
             alert("Error: " + result.error);
         }
@@ -161,7 +139,6 @@
                 <video id="alert-video-${alert.id}" src="/alert-animation.mp4" autoplay loop style="width: 100%; max-width: 150px; margin-bottom: 10px;"></video>
                 <div style="text-align: center;">
                     <b>Tipo:</b> ${alert.tipo}<br>
-                    <b>Radio:</b> ${alert.radio} km<br>
                     <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
                     <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
                     ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
@@ -177,8 +154,8 @@
         });
     }
 
-    function addRadarAnimation(latitud, longitud, radio) {
-        const radarCircle = L.circle([latitud, longitud], { color: '#ffff00', fillColor: '#ffff00', fillOpacity: 0.4, radius: radio * 1000, weight: 2 }).addTo(map);
+    function addRadarAnimation(latitud, longitud, radius) {
+        const radarCircle = L.circle([latitud, longitud], { color: '#ffff00', fillColor: '#ffff00', fillOpacity: 0.4, radius: radius * 1000, weight: 2 }).addTo(map);
         let opacity = 0.4, scale = 1;
         const animation = setInterval(() => {
             opacity -= 0.05;
@@ -188,7 +165,7 @@
                 map.removeLayer(radarCircle);
             } else {
                 radarCircle.setStyle({ fillOpacity: opacity });
-                radarCircle.setRadius(radio * 1000 * scale);
+                radarCircle.setRadius(radius * 1000 * scale);
             }
         }, 200);
     }
@@ -242,7 +219,6 @@
                     }).addTo(map);
                     marker.bindPopup(`
                         <b>Tipo:</b> ${alert.tipo}<br>
-                        <b>Radio:</b> ${alert.radio} km<br>
                         <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
                         <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
                         <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
@@ -453,14 +429,13 @@
     document.getElementById('send-alert-form')?.addEventListener('submit', async e => {
         e.preventDefault();
         const tipo = document.getElementById('alert-type').value;
-        const radio = parseInt(document.getElementById('alert-radius').value, 10);
         if (!userMarker) {
             console.log('userMarker no definido al enviar alerta, actualizando ubicación');
             updateUserLocation();
             return alert("Habilita la geolocalización y vuelve a intentarlo.");
         }
         const { lat, lng } = userMarker.getLatLng();
-        await sendAlert(tipo, lat, lng, radio);
+        await sendAlert(tipo, lat, lng);
     });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);

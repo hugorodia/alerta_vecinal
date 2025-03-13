@@ -57,6 +57,17 @@ function sendVerificationEmail($email, $nombre, $token) {
     }
 }
 
+function calculateDistance($lat1, $lon1, $lat2, $lon2) {
+    $R = 6371; // Radio de la Tierra en km
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return $R * $c;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $action = $data['action'] ?? '';
@@ -133,6 +144,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die(json_encode(['success' => true, 'message' => 'Sesión cerrada']));
             break;
 
+        case 'updateLocation':
+            $user_id = $data['user_id'] ?? '';
+            $latitude = $data['latitud'] ?? '';
+            $longitude = $data['longitud'] ?? '';
+            if (empty($user_id) || empty($latitude) || empty($longitude)) {
+                die(json_encode(['success' => false, 'error' => 'Faltan datos']));
+            }
+            $stmt = $conn->prepare("UPDATE users SET last_latitude = :latitud, last_longitude = :longitud WHERE id = :user_id");
+            $stmt->execute(['latitud' => $latitude, 'longitud' => $longitude, 'user_id' => $user_id]);
+            die(json_encode(['success' => true]));
+            break;
+
         case 'registrarAlerta':
             $user_id = $data['user_id'] ?? '';
             if (empty($user_id)) {
@@ -147,16 +170,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tipo = $data['tipo'] ?? '';
             $latitud = $data['latitud'] ?? '';
             $longitud = $data['longitud'] ?? '';
-            $radio = $data['radio'] ?? '';
-            if (empty($tipo) || empty($latitud) || empty($longitud) || empty($radio)) {
+            if (empty($tipo) || empty($latitud) || empty($longitud)) {
                 die(json_encode(['success' => false, 'error' => 'Faltan datos']));
             }
-            $stmt = $conn->prepare("INSERT INTO alerts (tipo, latitud, longitud, radio, user_id) VALUES (:tipo, :latitud, :longitud, :radio, :user_id) RETURNING id, fecha");
+            $stmt = $conn->prepare("INSERT INTO alerts (tipo, latitud, longitud, user_id) VALUES (:tipo, :latitud, :longitud, :user_id) RETURNING id, fecha");
             $stmt->execute([
                 'tipo' => $tipo,
                 'latitud' => $latitud,
                 'longitud' => $longitud,
-                'radio' => $radio,
                 'user_id' => $user_id
             ]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -165,7 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'tipo' => $tipo,
                 'latitud' => $latitud,
                 'longitud' => $longitud,
-                'radio' => $radio,
                 'fecha' => $result['fecha'],
                 'user_id' => $user_id,
                 'nombre' => $user['nombre'],
@@ -173,7 +193,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             $pusher = getPusher();
             if ($pusher) {
-                $pusher->trigger('alert-channel', 'new-alert', $alert);
+                $stmt = $conn->prepare("SELECT id, last_latitude, last_longitude FROM users WHERE last_latitude IS NOT NULL AND last_longitude IS NOT NULL AND id != :user_id");
+                $stmt->execute(['user_id' => $user_id]);
+                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $nearby_users = [];
+                foreach ($users as $user) {
+                    $distance = calculateDistance($latitud, $longitud, $user['last_latitude'], $user['last_longitude']);
+                    if ($distance <= 10) {
+                        $nearby_users[] = $user['id'];
+                    }
+                }
+                if (!empty($nearby_users)) {
+                    $pusher->trigger('alert-channel', 'new-alert', $alert, ['user_ids' => $nearby_users]);
+                }
             }
             die(json_encode(['success' => true, 'alert' => $alert]));
             break;
@@ -186,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die(json_encode(['success' => false, 'error' => 'Faltan datos']));
             }
             $stmt = $conn->prepare("
-                SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido
+                SELECT a.id, a.tipo, a.latitud, a.longitud, a.fecha, a.visible, a.user_id, u.nombre, u.apellido
                 FROM alerts a JOIN users u ON a.user_id = u.id
                 WHERE a.visible = true
                 AND (6371 * acos(cos(radians(:latitud)) * cos(radians(a.latitud)) * cos(radians(a.longitud) - radians(:longitud)) + sin(radians(:latitud)) * sin(radians(a.latitud)))) < :radio
@@ -210,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'obtenerHistorialAlertas':
             $fechaInicio = $data['fechaInicio'] ?? null;
             $fechaFin = $data['fechaFin'] ?? null;
-            $query = "SELECT a.id, a.tipo, a.latitud, a.longitud, a.radio, a.fecha, a.visible, a.user_id, u.nombre, u.apellido FROM alerts a JOIN users u ON a.user_id = u.id";
+            $query = "SELECT a.id, a.tipo, a.latitud, a.longitud, a.fecha, a.visible, a.user_id, u.nombre, u.apellido FROM alerts a JOIN users u ON a.user_id = u.id";
             $params = [];
             if ($fechaInicio && $fechaFin) {
                 $query .= " WHERE a.fecha BETWEEN :fechaInicio AND :fechaFin";
@@ -245,7 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("UPDATE users SET session_token = :session_token WHERE id = :id");
         $stmt->execute(['session_token' => $sessionToken, 'id' => $user['id']]);
         error_log("Verificación exitosa para user_id: {$user['id']}, session_token generado: $sessionToken");
-        // Devolver el session_token como JSON en lugar de redirigir
         ob_end_clean();
         echo json_encode(['success' => true, 'session_token' => $sessionToken]);
         exit;
