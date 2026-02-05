@@ -1,20 +1,25 @@
 {
-    "name": "Alerta Vecinal",
-    "short_name": "Alerta",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#003087",
-    "theme_color": "#003087",
-    "icons": [
-        {
-            "src": "/public/favicon.ico",
-            "sizes": "64x64",
-            "type": "image/x-icon"
-        },
-        {
-            "src": "/public/apple-touch-icon.png",
-            "sizes": "180x180",
-            "type": "image/png"
-        }
-    ]
+  "name": "Alerta Vecinal",
+  "short_name": "Alerta",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003087",
+  "theme_color": "#003087",
+  "icons": [
+    {
+      "src": "/public/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/public/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": [
+    "navigation",
+    "security"
+  ],
+  "description": "\"Alerta Vecinal: aplicación de seguridad comunitaria para reportar incidentes en tiempo real y recibir notificaciones inmediatas de tu barrio (radio de 5 km).\""
 }
