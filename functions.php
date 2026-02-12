@@ -1,11 +1,8 @@
 <?php
 ob_start();
 header('Content-Type: application/json');
-
 require 'vendor/autoload.php';
-
 use Pusher\Pusher;
-use SendGrid\Mail\Mail;
 
 function getDBConnection() {
     $dbname = getenv('PGDATABASE');
@@ -31,30 +28,6 @@ function getPusher() {
     $pusherCluster = getenv('cluster') ?: 'us2';
     $options = ['cluster' => $pusherCluster, 'encrypted' => true];
     return new Pusher($pusherKey, $pusherSecret, $pusherAppId, $options);
-}
-
-function sendVerificationEmail($email, $nombre, $token) {
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    $fromEmail = 'alertavecinal2025@gmail.com';
-    $emailObj = new Mail();
-    $emailObj->setFrom($fromEmail, "Alerta Vecinal");
-    $emailObj->setSubject("Verifica tu cuenta en Alerta Vecinal");
-    $emailObj->addTo($email, $nombre);
-    $emailObj->addContent(
-        "text/html",
-        "Hola $nombre,<br><br>Verifica tu cuenta:<br><br>" .
-        "<a href='https://alerta-vecinal.onrender.com/?action=verify&token=$token' target='_self'>Verificar mi cuenta</a><br><br>" .
-        "O usa este token manualmente: $token<br><br>" .
-        "Equipo de Alerta Vecinal"
-    );
-    $sendgrid = new \SendGrid($sendgridApiKey);
-    try {
-        $response = $sendgrid->send($emailObj);
-        return $response->statusCode() >= 200 && $response->statusCode() < 300;
-    } catch (Exception $e) {
-        error_log("Error al enviar email: " . $e->getMessage());
-        return false;
-    }
 }
 
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
@@ -88,20 +61,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die(json_encode(['success' => false, 'error' => 'El correo ya está registrado']));
             }
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $token = bin2hex(random_bytes(16));
-            $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, verification_token) VALUES (:email, :nombre, :apellido, :password, :token)");
+            $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, is_verified) VALUES (:email, :nombre, :apellido, :password, TRUE)");
             $stmt->execute([
                 'email' => $email,
                 'nombre' => $nombre,
                 'apellido' => $apellido,
-                'password' => $hashedPassword,
-                'token' => $token
+                'password' => $hashedPassword
             ]);
-            if (sendVerificationEmail($email, $nombre, $token)) {
-                die(json_encode(['success' => true, 'message' => 'Revisa tu correo para verificar']));
-            } else {
-                die(json_encode(['success' => false, 'error' => 'Error al enviar correo']));
-            }
+            die(json_encode(['success' => true, 'message' => 'Registro exitoso. Ya podés iniciar sesión.']));
             break;
 
         case 'login':
@@ -110,13 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($email) || empty($password)) {
                 die(json_encode(['success' => false, 'error' => 'Correo y contraseña obligatorios']));
             }
-            $stmt = $conn->prepare("SELECT id, password, is_verified FROM users WHERE email = :email");
+            $stmt = $conn->prepare("SELECT id, password FROM users WHERE email = :email");
+            $stmt->
             $stmt->execute(['email' => $email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user && password_verify($password, $user['password'])) {
-                if (!$user['is_verified']) {
-                    die(json_encode(['success' => false, 'error' => 'Verifica tu correo primero']));
-                }
                 die(json_encode(['success' => true, 'user_id' => $user['id']]));
             } else {
                 die(json_encode(['success' => false, 'error' => 'Correo o contraseña incorrectos']));
@@ -128,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($sessionToken)) {
                 die(json_encode(['success' => false, 'error' => 'Token de sesión requerido']));
             }
-            $stmt = $conn->prepare("SELECT id FROM users WHERE session_token = :session_token AND is_verified = TRUE");
+            $stmt = $conn->prepare("SELECT id FROM users WHERE session_token = :session_token");
             $stmt->execute(['session_token' => $sessionToken]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
@@ -136,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute(['id' => $user['id']]);
                 die(json_encode(['success' => true, 'user_id' => $user['id']]));
             } else {
-                die(json_encode(['success' => false, 'error' => 'Token inválido o usuario no verificado']));
+                die(json_encode(['success'amica' => false, 'error' => 'Token inválido']));
             }
             break;
 
@@ -161,11 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión']));
             }
-            $stmt = $conn->prepare("SELECT is_verified, nombre, apellido FROM users WHERE id = :user_id");
+            $stmt = $conn->prepare("SELECT nombre, apellido FROM users WHERE id = :user_id");
             $stmt->execute(['user_id' => $user_id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$user || !$user['is_verified']) {
-                die(json_encode(['success' => false, 'error' => 'Verifica tu correo']));
+            if (!$user) {
+                die(json_encode(['success' => false, 'error' => 'Usuario no encontrado']));
             }
             $tipo = $data['tipo'] ?? '';
             $latitud = $data['latitud'] ?? '';
@@ -199,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nearby_users = [];
                 foreach ($users as $user) {
                     $distance = calculateDistance($latitud, $longitud, $user['last_latitude'], $user['last_longitude']);
-                    if ($distance <= 5) { // Cambiado de 10 a 5 km
+                    if ($distance <= 5) {
                         $nearby_users[] = $user['id'];
                     }
                 }
@@ -264,34 +229,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die(json_encode(['success' => true]));
             break;
     }
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'verify' && isset($_GET['token'])) {
-    $token = $_GET['token'];
-    $conn = getDBConnection();
-    $stmt = $conn->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = FALSE");
-    $stmt->execute(['token' => $token]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user) {
-        $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = :id");
-        $stmt->execute(['id' => $user['id']]);
-        $sessionToken = bin2hex(random_bytes(16));
-        $stmt = $conn->prepare("UPDATE users SET session_token = :session_token WHERE id = :id");
-        $stmt->execute(['session_token' => $sessionToken, 'id' => $user['id']]);
-        error_log("Verificación exitosa para user_id: {$user['id']}, session_token generado: $sessionToken");
-        ob_end_clean();
-        echo json_encode(['success' => true, 'session_token' => $sessionToken]);
-        exit;
-    } else {
-        error_log("Token inválido o ya verificado: $token");
-        ob_end_clean();
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Token inválido o ya verificado']);
-        exit;
-    }
 } else {
     ob_end_clean();
     http_response_code(405);
     die(json_encode(['success' => false, 'error' => 'Método no permitido']));
 }
-
 ob_end_clean();
 ?>
