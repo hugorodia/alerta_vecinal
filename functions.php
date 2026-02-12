@@ -78,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die(json_encode(['success' => false, 'error' => 'Correo y contraseña obligatorios']));
             }
             $stmt = $conn->prepare("SELECT id, password FROM users WHERE email = :email");
-            $stmt->
             $stmt->execute(['email' => $email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user && password_verify($password, $user['password'])) {
@@ -101,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute(['id' => $user['id']]);
                 die(json_encode(['success' => true, 'user_id' => $user['id']]));
             } else {
-                die(json_encode(['success'amica' => false, 'error' => 'Token inválido']));
+                die(json_encode(['success' => false, 'error' => 'Token inválido']));
             }
             break;
 
@@ -162,10 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute(['user_id' => $user_id]);
                 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $nearby_users = [];
-                foreach ($users as $user) {
-                    $distance = calculateDistance($latitud, $longitud, $user['last_latitude'], $user['last_longitude']);
+                foreach ($users as $userItem) {
+                    $distance = calculateDistance($latitud, $longitud, $userItem['last_latitude'], $userItem['last_longitude']);
                     if ($distance <= 5) {
-                        $nearby_users[] = $user['id'];
+                        $nearby_users[] = $userItem['id'];
                     }
                 }
                 if (!empty($nearby_users)) {
