@@ -1,33 +1,27 @@
 {
   "name": "Alerta Vecinal",
   "short_name": "Alerta",
-  "start_url": "/ ",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#003087",
   "theme_color": "#003087",
-  "description": "Alerta Vecinal: aplicación de seguridad comunitaria para reportar incidentes en tiempo real y recibir notificaciones inmediatas de tu barrio (radio de 5 km).",
-  "categories": [
-    "navigation",
-    "security"
-  ],
+  "description": "Alerta Vecinal: aplicación de seguridad comunitaria para reportar incidentes en tiempo real y recibir alertas inmediatas en un radio de 5 km.",
+  "id": "/",
+  "orientation": "any",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/alert-icon.png",
+      "sizes": "512x512 192x192 384x384",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
     }
-  ]
+  ],
+  "screenshots": []
 }
