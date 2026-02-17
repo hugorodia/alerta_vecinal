@@ -439,15 +439,10 @@
     });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
-})();
-
-console.log('script.js cargado completamente');
-// ================== FCM - ALERTA VECINAL ==================
-// Esto hace que las alertas lleguen SIEMPRE (primer plano + segundo plano)
-
+ // ================== FCM - ALERTA VECINAL (primer plano + segundo plano) ==================
 const messaging = firebase.messaging();
 
-// 1. Pedir permiso y guardar token después de login
+// Pedir permiso y guardar token después de login
 async function initFCM() {
   try {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -464,37 +459,47 @@ async function initFCM() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'saveFcmToken', user_id: userId, token })
         });
-        console.log('✅ Token FCM guardado');
+        console.log('✅ Token FCM guardado correctamente');
       }
     }
   } catch (err) {
-    console.error('Error en initFCM:', err);
+    console.error('Error initFCM:', err);
   }
 }
 
 // Llamar después de login exitoso
 document.getElementById('login-btn')?.addEventListener('click', async () => {
-  // ... tu código actual de login ...
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'login', email, password })
+  });
+  const result = await response.json();
   if (result.success) {
     localStorage.setItem('user_id', result.user_id);
     document.querySelector('.auth-form').style.display = 'none';
     document.getElementById('logout-btn').style.display = 'block';
     console.log('Login exitoso, user_id:', result.user_id);
-    initFCM();   // ←←← AGREGADO AQUÍ
+    initFCM();   // ←←← Llamada a FCM después del login
   } else {
     alert("Error: " + result.error);
   }
 });
 
-// 2. Alerta cuando la app está ABIERTA (primer plano)
+// Alerta cuando la app está ABIERTA (primer plano)
 messaging.onMessage((payload) => {
   console.log('✅ Alerta recibida en primer plano:', payload);
-  const data = payload.data || {};
+  const data = payload.data || payload.notification || {};
 
   playAlertSound();                    // Tu sonido característico fuerte
-  addAlertToMapWithAnimation(data);    // Tu función de animación en el mapa
-  showNotification(data);              // Tu popup visible
+  addAlertToMapWithAnimation(data);    // Animación en el mapa
+  showNotification(data);              // Popup visible
 
-  // Popup extra grande para que no se pierda
-  alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre} ${data.apellido || ''}`);
-});
+  alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || ''} ${data.apellido || ''}`);
+});   
+})();
+
+console.log('script.js cargado completamente');
+
