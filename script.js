@@ -442,3 +442,59 @@
 })();
 
 console.log('script.js cargado completamente');
+// ================== FCM - ALERTA VECINAL ==================
+// Esto hace que las alertas lleguen SIEMPRE (primer plano + segundo plano)
+
+const messaging = firebase.messaging();
+
+// 1. Pedir permiso y guardar token después de login
+async function initFCM() {
+  try {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    if (Notification.permission === 'granted') {
+      const token = await messaging.getToken({ 
+        vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so' 
+      });
+      const userId = localStorage.getItem('user_id');
+      if (token && userId) {
+        fetch('https://alerta-vecinal.onrender.com/functions.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'saveFcmToken', user_id: userId, token })
+        });
+        console.log('✅ Token FCM guardado');
+      }
+    }
+  } catch (err) {
+    console.error('Error en initFCM:', err);
+  }
+}
+
+// Llamar después de login exitoso
+document.getElementById('login-btn')?.addEventListener('click', async () => {
+  // ... tu código actual de login ...
+  if (result.success) {
+    localStorage.setItem('user_id', result.user_id);
+    document.querySelector('.auth-form').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'block';
+    console.log('Login exitoso, user_id:', result.user_id);
+    initFCM();   // ←←← AGREGADO AQUÍ
+  } else {
+    alert("Error: " + result.error);
+  }
+});
+
+// 2. Alerta cuando la app está ABIERTA (primer plano)
+messaging.onMessage((payload) => {
+  console.log('✅ Alerta recibida en primer plano:', payload);
+  const data = payload.data || {};
+
+  playAlertSound();                    // Tu sonido característico fuerte
+  addAlertToMapWithAnimation(data);    // Tu función de animación en el mapa
+  showNotification(data);              // Tu popup visible
+
+  // Popup extra grande para que no se pierda
+  alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre} ${data.apellido || ''}`);
+});
