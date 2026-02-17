@@ -81,6 +81,28 @@ session_start();
             });
         }
     </script>
+        <!-- === FIREBASE CLOUD MESSAGING === -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+
+    <script>
+      // === TU CONFIGURACIÓN DE FIREBASE ===
+      const firebaseConfig = {
+        apiKey: "AIzaSyCBP-fPS1HZOnblNKRNInutcwcjL0DpvOw",
+        authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
+        projectId: "alerta-vecinal-a8bef",
+        storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
+        messagingSenderId: "479895936339",
+        appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const messaging = firebase.messaging();
+    </script>
+    <!-- === FIN FIREBASE === -->
+
+    <script src="script.js?v=1.2"></script>
+</body>
     <script src="script.js?v=1.2"></script>
 </body>
 </html>
