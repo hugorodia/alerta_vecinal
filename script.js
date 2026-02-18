@@ -366,7 +366,11 @@
     const logoutBtn = document.getElementById('logout-btn');
 
     console.log('Llamando a initMap...');
+if (!map) {  // Solo inicializa si no existe
     initMap();
+} else {
+    console.log('Mapa ya inicializado, no se vuelve a llamar initMap');
+}
 
     if (userId && !sessionToken && !verifyToken) {
         registerFormSection.style.display = 'none';
