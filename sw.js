@@ -1,47 +1,36 @@
-// This is the "Offline page" service worker
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
-
-const CACHE = "pwabuilder-page";
-
-// TODO: replace the following with the correct offline fallback page i.e.: const offlineFallbackPage = "offline.html";
-const offlineFallbackPage = "offline.html";
-
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
+firebase.initializeApp({
+  apiKey: "AIzaSyCBP-fPS1HZOnblNKRNInutcwcjL0DpvOw",
+  authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
+  projectId: "alerta-vecinal-a8bef",
+  storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
+  messagingSenderId: "479895936339",
+  appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
 });
 
-self.addEventListener('install', async (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => cache.add(offlineFallbackPage))
-  );
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log('Alerta recibida en segundo plano / cerrada:', payload);
+
+  const notificationTitle = '🚨 ¡ALERTA VECINAL!';
+  const notificationOptions = {
+    body: `${payload.data?.tipo || 'Alerta'} cerca tuyo\nEnviado por: ${payload.data?.nombre || 'Usuario'}`,
+    icon: '/alert-icon.png',
+    badge: '/alert-icon.png',
+    vibrate: [500, 200, 500, 200, 500],  // Vibración fuerte para llamar atención
+    tag: 'alerta-vecinal',
+    renotify: true,
+    requireInteraction: true,  // Mantiene la notificación visible hasta que la toques
+    data: payload.data || {}   // Datos para abrir la alerta al tocar
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-if (workbox.navigationPreload.isSupported()) {
-  workbox.navigationPreload.enable();
-}
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const preloadResp = await event.preloadResponse;
-
-        if (preloadResp) {
-          return preloadResp;
-        }
-
-        const networkResp = await fetch(event.request);
-        return networkResp;
-      } catch (error) {
-
-        const cache = await caches.open(CACHE);
-        const cachedResp = await cache.match(offlineFallbackPage);
-        return cachedResp;
-      }
-    })());
-  }
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('/'));
 });
