@@ -1,6 +1,5 @@
 (function() {
     "use strict";
-
     console.log('DOM cargado, inicializando...');
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
@@ -24,14 +23,16 @@
             console.error('Leaflet no está cargado');
             return;
         }
+        if (map) {
+            console.log('Mapa ya inicializado, no se vuelve a llamar initMap');
+            return;
+        }
         map = L.map('map').setView([lat, lng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
         setupPusher();
         updateUserLocation();
-
         setInterval(updateUserLocation, 300000); // Actualizar cada 5 minutos
     }
 
@@ -46,7 +47,7 @@
                 } else {
                     userMarker.setLatLng([latitude, longitude]);
                 }
-                fetchNearbyAlerts(latitude, longitude, 5); // Cambiado de 10 a 5 km
+                fetchNearbyAlerts(latitude, longitude, 5);
                 const userId = localStorage.getItem('user_id');
                 if (userId) {
                     fetch('https://alerta-vecinal.onrender.com/functions.php', {
@@ -60,7 +61,7 @@
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
-                fetchNearbyAlerts(-34.6037, -58.3816, 5); // Cambiado de 10 a 5 km
+                fetchNearbyAlerts(-34.6037, -58.3816, 5);
             }
         );
     }
@@ -78,12 +79,11 @@
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
             console.log('Local User ID:', localUserId, 'Alert User ID:', data.user_id);
             console.log('Notificaciones habilitadas:', notificationsEnabled);
-
             if (localUserId !== data.user_id && notificationsEnabled && userMarker) {
                 const userLocation = userMarker.getLatLng();
                 const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
                 console.log('Distancia calculada:', distance);
-                if (distance <= 5) { // Cambiado de 10 a 5 km
+                if (distance <= 5) {
                     addAlertToMapWithAnimation(data);
                     console.log('Dentro de 5 km, notificando');
                     showNotification(data);
@@ -124,7 +124,7 @@
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
             addAlertToMapWithAnimation(result.alert);
-            addRadarAnimation(latitud, longitud, 5); // Cambiado de 10 a 5 km
+            addRadarAnimation(latitud, longitud, 5);
         } else {
             alert("Error: " + result.error);
         }
@@ -228,7 +228,7 @@
                 historyBtn.textContent = 'Ocultar Historial';
                 historyVisible = true;
                 document.getElementById('history-start').disabled = true;
-                document.getElementById('history-end').disabled = true;
+                document.getElementById('history-end').disabled = false;
             }
         } else {
             historyMarkers.forEach(marker => map.removeLayer(marker));
@@ -288,7 +288,6 @@
     const sessionToken = urlParams.get('session_token');
     const verifyAction = urlParams.get('action');
     const verifyToken = urlParams.get('token');
-
     console.log('URL actual:', window.location.href);
 
     const enableNotificationsCheckbox = document.getElementById('enable-notifications');
@@ -364,13 +363,12 @@
     const userId = localStorage.getItem('user_id');
     const registerFormSection = document.querySelector('.auth-form');
     const logoutBtn = document.getElementById('logout-btn');
-
     console.log('Llamando a initMap...');
-if (!map) {  // Solo inicializa si no existe
-    initMap();
-} else {
-    console.log('Mapa ya inicializado, no se vuelve a llamar initMap');
-}
+    if (!map) {
+        initMap();
+    } else {
+        console.log('Mapa ya inicializado, no se vuelve a llamar initMap');
+    }
 
     if (userId && !sessionToken && !verifyToken) {
         registerFormSection.style.display = 'none';
@@ -443,67 +441,67 @@ if (!map) {  // Solo inicializa si no existe
     });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
- // ================== FCM - ALERTA VECINAL (primer plano + segundo plano) ==================
-const messaging = firebase.messaging();
 
-// Pedir permiso y guardar token después de login
-async function initFCM() {
-  try {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
-    }
-    if (Notification.permission === 'granted') {
-      const token = await messaging.getToken({ 
-        vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so' 
-      });
-      const userId = localStorage.getItem('user_id');
-      if (token && userId) {
-        fetch('https://alerta-vecinal.onrender.com/functions.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'saveFcmToken', user_id: userId, token })
-        });
-        console.log('✅ Token FCM guardado correctamente');
+    // ================== FCM - ALERTA VECINAL ==================
+    const messaging = firebase.messaging();
+
+    // Pedir permiso y guardar token después de login
+    async function initFCM() {
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+        if (Notification.permission === 'granted') {
+          const token = await messaging.getToken({ 
+            vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so' 
+          });
+          const userId = localStorage.getItem('user_id');
+          if (token && userId) {
+            fetch('https://alerta-vecinal.onrender.com/functions.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'saveFcmToken', user_id: userId, token })
+            });
+            console.log('✅ Token FCM guardado correctamente');
+          }
+        }
+      } catch (err) {
+        console.error('Error initFCM:', err);
       }
     }
-  } catch (err) {
-    console.error('Error initFCM:', err);
-  }
-}
 
-// Llamar después de login exitoso
-document.getElementById('login-btn')?.addEventListener('click', async () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'login', email, password })
-  });
-  const result = await response.json();
-  if (result.success) {
-    localStorage.setItem('user_id', result.user_id);
-    document.querySelector('.auth-form').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'block';
-    console.log('Login exitoso, user_id:', result.user_id);
-    initFCM();   // ←←← Llamada a FCM después del login
-  } else {
-    alert("Error: " + result.error);
-  }
-});
+    // Llamar después de login exitoso
+    document.getElementById('login-btn')?.addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', email, password })
+      });
+      const result = await response.json();
+      if (result.success) {
+        localStorage.setItem('user_id', result.user_id);
+        document.querySelector('.auth-form').style.display = 'none';
+        document.getElementById('logout-btn').style.display = 'block';
+        console.log('Login exitoso, user_id:', result.user_id);
+        initFCM();
+      } else {
+        alert("Error: " + result.error);
+      }
+    });
 
-// Alerta cuando la app está ABIERTA (primer plano)
-messaging.onMessage((payload) => {
-  console.log('✅ Alerta recibida en primer plano:', payload);
-  const data = payload.data || payload.notification || {};
+    // Alerta cuando la app está ABIERTA (primer plano)
+    messaging.onMessage((payload) => {
+      console.log('✅ Alerta recibida en primer plano:', payload);
+      const data = payload.data || payload.notification || {};
 
-  playAlertSound();                    // Tu sonido característico fuerte
-  addAlertToMapWithAnimation(data);    // Animación en el mapa
-  showNotification(data);              // Popup visible
+      playAlertSound();
+      addAlertToMapWithAnimation(data);
+      showNotification(data);
 
-  alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || ''} ${data.apellido || ''}`);
-});   
+      alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || ''} ${data.apellido || ''}`);
+    });
+
 })();
-
 console.log('script.js cargado completamente');
-
