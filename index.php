@@ -8,13 +8,17 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Aplicación de alertas de seguridad para residentes de barrios o localidades. Mantente informado sobre situaciones de peligro en tiempo real.">
     <meta name="keywords" content="alertas vecinales, seguridad, robo, asalto, actividad sospechosa, app seguridad">
-    <meta name="author" content="Tu Nombre">
+    <meta name="author" content="Hugo Rodia">
     <title>Alerta Vecinal - Aplicación de Seguridad</title>
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png?v=1">
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css?v=1.1">
+
+    <!-- Firebase SDK para FCM -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
     <header class="header">
@@ -66,10 +70,14 @@ session_start();
         </section>
     </main>
     <footer class="footer">
-        <p>© 2023 Alerta Vecinal. Todos los derechos reservados.</p>
+        <p>© 2026 Alerta Vecinal. Todos los derechos reservados.</p>
     </footer>
+
+    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+
+    <!-- Inicialización de Pusher y Service Worker -->
     <script>
         window.PUSHER_KEY = <?php echo json_encode(getenv('PUSHER_KEY')); ?>;
         window.PUSHER_CLUSTER = <?php echo json_encode(getenv('PUSHER_CLUSTER')); ?>;
@@ -81,28 +89,21 @@ session_start();
             });
         }
     </script>
-        <!-- === FIREBASE CLOUD MESSAGING === -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
 
+    <!-- Firebase Config y Messaging -->
     <script>
-      // === TU CONFIGURACIÓN DE FIREBASE ===
-      const firebaseConfig = {
-        apiKey: "AIzaSyCBP-fPS1HZOnblNKRNInutcwcjL0DpvOw",
-        authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
-        projectId: "alerta-vecinal-a8bef",
-        storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
-        messagingSenderId: "479895936339",
-        appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
-      };
-
-      firebase.initializeApp(firebaseConfig);
-      const messaging = firebase.messaging();
+        const firebaseConfig = {
+          apiKey: "AIzaSyCBP-fPS1HZOnblNKRNInutcwcjL0DpvOw",
+          authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
+          projectId: "alerta-vecinal-a8bef",
+          storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
+          messagingSenderId: "479895936339",
+          appId: "1:479895936339:web:e838e1064f5deef291d5a6"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
     </script>
-    <!-- === FIN FIREBASE === -->
 
-    <script src="script.js?v=1.2"></script>
-</body>
-    <script src="script.js?v=1.2"></script>
+    <script src="script.js?v=1.3"></script>
 </body>
 </html>
