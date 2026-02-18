@@ -452,9 +452,10 @@
           await Notification.requestPermission();
         }
         if (Notification.permission === 'granted') {
-          const token = await messaging.getToken({ 
-            vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so' 
-          });
+         const token = await messaging.getToken({
+  vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
+  serviceWorkerRegistration: await navigator.serviceWorker.ready  // ← Usa tu sw.js existente
+});
           const userId = localStorage.getItem('user_id');
           if (token && userId) {
             fetch('https://alerta-vecinal.onrender.com/functions.php', {
