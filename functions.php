@@ -120,6 +120,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die(json_encode(['success' => true]));
             break;
 
+        case 'saveFcmToken':
+    $user_id = $data['user_id'] ?? '';
+    $token = $data['token'] ?? '';
+    if (empty($user_id) || empty($token)) {
+        die(json_encode(['success' => false, 'error' => 'Datos incompletos']));
+    }
+    $stmt = $conn->prepare("UPDATE users SET fcm_token = :token WHERE id = :user_id");
+    $stmt->execute(['token' => $token, 'user_id' => $user_id]);
+    die(json_encode(['success' => true]));
+    break;
+
         case 'registrarAlerta':
             $user_id = $data['user_id'] ?? '';
             if (empty($user_id)) {
