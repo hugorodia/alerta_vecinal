@@ -115,11 +115,11 @@
     async function sendAlert(tipo, latitud, longitud) {
         const userId = localStorage.getItem('user_id');
         if (!userId) return alert("Debes iniciar sesión.");
-        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'registrarAlerta', tipo, latitud, longitud, user_id: userId })
-        });
+        const response = await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/registrarAlerta', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ tipo, latitud, longitud, user_id: userId })
+});
         const result = await response.json();
         if (result.success) {
             console.log('Alerta enviada con éxito:', result.alert);
