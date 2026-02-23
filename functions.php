@@ -47,27 +47,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = getDBConnection();
 
     switch ($action) {
-        case 'register':
-            $email = $data['email'] ?? '';
-            $nombre = $data['nombre'] ?? '';
-            $apellido = $data['apellido'] ?? '';
-            $password = $data['password'] ?? '';
-            if (empty($email) || empty($nombre) || empty($apellido) || empty($password)) {
-                die(json_encode(['success' => false, 'error' => 'Todos los campos son obligatorios']));
-            }
-            $stmt = $conn->prepare("SELECT id FROM users WHERE email = :email");
-            $stmt->execute(['email' => $email]);
-            if ($stmt->fetch()) {
-                die(json_encode(['success' => false, 'error' => 'El correo ya está registrado']));
-            }
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, is_verified) VALUES (:email, :nombre, :apellido, :password, TRUE)");
-            $stmt->execute([
-                'email' => $email,
-                'nombre' => $nombre,
-                'apellido' => $apellido,
-                'password' => $hashedPassword
-            ]);
+       case 'register':
+    $email = $data['email'] ?? '';
+    $nombre = $data['nombre'] ?? '';
+    $apellido = $data['apellido'] ?? '';
+    $password = $data['password'] ?? '';
+    if (empty($email) || empty($nombre) || empty($apellido) || empty($password)) {
+        die(json_encode(['success' => false, 'error' => 'Todos los campos son obligatorios']));
+    }
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = :email");
+    $stmt->execute(['email' => $email]);
+    if ($stmt->fetch()) {
+        die(json_encode(['success' => false, 'error' => 'El correo ya está registrado']));
+    }
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, is_verified) VALUES (:email, :nombre, :apellido, :password, TRUE)");
+    $stmt->execute([
+        'email' => $email,
+        'nombre' => $nombre,
+        'apellido' => $apellido,
+        'password' => $hashedPassword
+    ]);
+    
+    // Línea agregada para pruebas: verifica automáticamente al registrar
+    $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE WHERE email = :email");
+    $stmt->execute(['email' => $email]);
+
+    die(json_encode(['success' => true, 'message' => 'Registro exitoso. Ya podés iniciar sesión.']));
+    break;
             die(json_encode(['success' => true, 'message' => 'Registro exitoso. Ya podés iniciar sesión.']));
             break;
 
