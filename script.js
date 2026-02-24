@@ -154,19 +154,37 @@
         });
     }
 
- function addRadarAnimation(latitud, longitud, maxRadius) {
-        let radius = 0; // Empieza desde 0 (menor)
-        const radarCircle = L.circle([latitud, longitud], { color: '#ffff00', fillColor: '#ffff00', fillOpacity: 0.4, radius, weight: 2 }).addTo(map);
-        const animation = setInterval(() => {
-            radius += 50; // Crece de a 50 metros por paso (lento)
-            if (radius > maxRadius * 1000) { // Max 1.25 km = 1250 metros
-                clearInterval(animation);
-                setTimeout(() => map.removeLayer(radarCircle), 2000); // Desvanece después de 2s
-            } else {
-                radarCircle.setRadius(radius);
-            }
-        }, 100); // Cada 100 ms para crecimiento lento
-    }
+function addRadarAnimation(latitud, longitud, radius) {
+    let currentRadius = 0; // Empieza desde casi 0 (pequeña)
+    const maxRadius = radius * 1000; // 2.5 km de diámetro = 1250 metros de radio
+    const radarCircle = L.circle([latitud, longitud], {
+        color: '#ffff00',
+        fillColor: '#ffff00',
+        fillOpacity: 0.45,
+        radius: currentRadius,
+        weight: 2.5
+    }).addTo(map);
+
+    const animation = setInterval(() => {
+        currentRadius += 65; // Crece de a 65 metros por paso (un poco más rápido)
+        if (currentRadius >= maxRadius) {
+            clearInterval(animation);
+            // Desvanece suavemente después de llegar al máximo
+            let opacity = 0.45;
+            const fadeOut = setInterval(() => {
+                opacity -= 0.025;
+                if (opacity <= 0) {
+                    clearInterval(fadeOut);
+                    map.removeLayer(radarCircle);
+                } else {
+                    radarCircle.setStyle({ fillOpacity: opacity });
+                }
+            }, 80); // Fade out suave
+        } else {
+            radarCircle.setRadius(currentRadius);
+        }
+    }, 65); // Cada 65 ms → crecimiento fluido y profesional
+}
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
         const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
