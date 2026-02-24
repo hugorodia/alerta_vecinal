@@ -154,21 +154,26 @@
         });
     }
 
-    function addRadarAnimation(latitud, longitud, radius) {
-        const radarCircle = L.circle([latitud, longitud], { color: '#ffff00', fillColor: '#ffff00', fillOpacity: 0.4, radius: radius * 1000, weight: 2 }).addTo(map);
-        let opacity = 0.4, scale = 1;
-        const animation = setInterval(() => {
-            opacity -= 0.05;
-            scale += 0.1;
-            if (opacity <= 0) {
-                clearInterval(animation);
-                map.removeLayer(radarCircle);
-            } else {
-                radarCircle.setStyle({ fillOpacity: opacity });
-                radarCircle.setRadius(radius * 1000 * scale);
-            }
-        }, 200);
-    }
+   function addRadarAnimation(latitud, longitud, radius) {
+    const radarCircle = L.circle([latitud, longitud], {
+        color: '#ffff00',
+        fillColor: '#ffff00',
+        fillOpacity: 0.4,
+        radius: radius * 1000,  // 5 km = 5000 metros
+        weight: 2
+    }).addTo(map);
+
+    let opacity = 0.4;
+    const animation = setInterval(() => {
+        opacity -= 0.03;  // más lento para que no desaparezca rápido
+        if (opacity <= 0) {
+            clearInterval(animation);
+            map.removeLayer(radarCircle);
+        } else {
+            radarCircle.setStyle({ fillOpacity: opacity });
+        }
+    }, 300);  // cada 300 ms en vez de 200
+}
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
         const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
