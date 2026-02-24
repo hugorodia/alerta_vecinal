@@ -154,25 +154,27 @@
         });
     }
 
-   function addRadarAnimation(latitud, longitud, radius) {
+  function addRadarAnimation(latitud, longitud, radius) {
     const radarCircle = L.circle([latitud, longitud], {
         color: '#ffff00',
         fillColor: '#ffff00',
         fillOpacity: 0.4,
-        radius: radius * 1000,  // 5 km = 5000 metros
+        radius: radius * 1000, // 5 km = 5000 metros
         weight: 2
     }).addTo(map);
 
+    // Sin crecimiento (para que se vea realista)
+    // Si querés fade out lento:
     let opacity = 0.4;
     const animation = setInterval(() => {
-        opacity -= 0.03;  // más lento para que no desaparezca rápido
+        opacity -= 0.02;
         if (opacity <= 0) {
             clearInterval(animation);
             map.removeLayer(radarCircle);
         } else {
             radarCircle.setStyle({ fillOpacity: opacity });
         }
-    }, 300);  // cada 300 ms en vez de 200
+    }, 400); // más lento
 }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
