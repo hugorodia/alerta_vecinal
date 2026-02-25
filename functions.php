@@ -176,11 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die(json_encode(['success' => true]));
             break;
 
-        case 'registrarAlerta':
-            // Este case ya no se usa (se maneja en Firebase Function)
-            die(json_encode(['success' => false, 'error' => 'Usar Cloud Function']));
-            break;
-
         case 'obtenerAlertasCercanas':
             $latitud = $data['latitud'] ?? '';
             $longitud = $data['longitud'] ?? '';
