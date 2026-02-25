@@ -31,7 +31,7 @@ function getPusher() {
 }
 
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
-    $R = 6371; // Radio de la Tierra en km
+    $R = 6371;
     $dLat = deg2rad($lat2 - $lat1);
     $dLon = deg2rad($lon2 - $lon1);
     $a = sin($dLat / 2) * sin($dLat / 2) +
@@ -47,34 +47,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = getDBConnection();
 
     switch ($action) {
-       case 'register':
-    $email = $data['email'] ?? '';
-    $nombre = $data['nombre'] ?? '';
-    $apellido = $data['apellido'] ?? '';
-    $password = $data['password'] ?? '';
-    if (empty($email) || empty($nombre) || empty($apellido) || empty($password)) {
-        die(json_encode(['success' => false, 'error' => 'Todos los campos son obligatorios']));
-    }
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = :email");
-    $stmt->execute(['email' => $email]);
-    if ($stmt->fetch()) {
-        die(json_encode(['success' => false, 'error' => 'El correo ya está registrado']));
-    }
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, is_verified) VALUES (:email, :nombre, :apellido, :password, TRUE)");
-    $stmt->execute([
-        'email' => $email,
-        'nombre' => $nombre,
-        'apellido' => $apellido,
-        'password' => $hashedPassword
-    ]);
-    
-    // Línea agregada para pruebas: verifica automáticamente al registrar
-    $stmt = $conn->prepare("UPDATE users SET is_verified = TRUE WHERE email = :email");
-    $stmt->execute(['email' => $email]);
-
-    die(json_encode(['success' => true, 'message' => 'Registro exitoso. Ya podés iniciar sesión.']));
-    break;
+        case 'register':
+            $email = $data['email'] ?? '';
+            $nombre = $data['nombre'] ?? '';
+            $apellido = $data['apellido'] ?? '';
+            $password = $data['password'] ?? '';
+            if (empty($email) || empty($nombre) || empty($apellido) || empty($password)) {
+                die(json_encode(['success' => false, 'error' => 'Todos los campos son obligatorios']));
+            }
+            $stmt = $conn->prepare("SELECT id FROM users WHERE email = :email");
+            $stmt->execute(['email' => $email]);
+            if ($stmt->fetch()) {
+                die(json_encode(['success' => false, 'error' => 'El correo ya está registrado']));
+            }
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("INSERT INTO users (email, nombre, apellido, password, is_verified) VALUES (:email, :nombre, :apellido, :password, TRUE)");
+            $stmt->execute([
+                'email' => $email,
+                'nombre' => $nombre,
+                'apellido' => $apellido,
+                'password' => $hashedPassword
+            ]);
             die(json_encode(['success' => true, 'message' => 'Registro exitoso. Ya podés iniciar sesión.']));
             break;
 
@@ -128,68 +121,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'saveFcmToken':
-    $user_id = $data['user_id'] ?? '';
-    $token = $data['token'] ?? '';
-    if (empty($user_id) || empty($token)) {
-        die(json_encode(['success' => false, 'error' => 'Datos incompletos']));
-    }
-    $stmt = $conn->prepare("UPDATE users SET fcm_token = :token WHERE id = :user_id");
-    $stmt->execute(['token' => $token, 'user_id' => $user_id]);
-    die(json_encode(['success' => true]));
-    break;
-
-        case 'registrarAlerta':
             $user_id = $data['user_id'] ?? '';
-            if (empty($user_id)) {
-                die(json_encode(['success' => false, 'error' => 'Debes iniciar sesión']));
+            $token = $data['token'] ?? '';
+            if (empty($user_id) || empty($token)) {
+                die(json_encode(['success' => false, 'error' => 'Datos incompletos']));
             }
+            $stmt = $conn->prepare("UPDATE users SET fcm_token = :token WHERE id = :user_id");
+            $stmt->execute(['token' => $token, 'user_id' => $user_id]);
+            die(json_encode(['success' => true]));
+            break;
+
+        case 'getUserData':
+            $user_id = $data['user_id'] ?? '';
+            if (empty($user_id)) die(json_encode(['success' => false, 'error' => 'Faltan datos']));
             $stmt = $conn->prepare("SELECT nombre, apellido FROM users WHERE id = :user_id");
             $stmt->execute(['user_id' => $user_id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$user) {
+            if ($user) {
+                die(json_encode(['success' => true, 'user' => $user]));
+            } else {
                 die(json_encode(['success' => false, 'error' => 'Usuario no encontrado']));
             }
-            $tipo = $data['tipo'] ?? '';
+            break;
+
+        case 'getNearbyUsers':
             $latitud = $data['latitud'] ?? '';
             $longitud = $data['longitud'] ?? '';
-            if (empty($tipo) || empty($latitud) || empty($longitud)) {
+            $user_id = $data['user_id'] ?? '';
+            if (empty($latitud) || empty($longitud) || empty($user_id)) {
                 die(json_encode(['success' => false, 'error' => 'Faltan datos']));
             }
-            $stmt = $conn->prepare("INSERT INTO alerts (tipo, latitud, longitud, user_id) VALUES (:tipo, :latitud, :longitud, :user_id) RETURNING id, fecha");
-            $stmt->execute([
-                'tipo' => $tipo,
-                'latitud' => $latitud,
-                'longitud' => $longitud,
-                'user_id' => $user_id
-            ]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $alert = [
-                'id' => $result['id'],
-                'tipo' => $tipo,
-                'latitud' => $latitud,
-                'longitud' => $longitud,
-                'fecha' => $result['fecha'],
-                'user_id' => $user_id,
-                'nombre' => $user['nombre'],
-                'apellido' => $user['apellido']
-            ];
-            $pusher = getPusher();
-            if ($pusher) {
-                $stmt = $conn->prepare("SELECT id, last_latitude, last_longitude FROM users WHERE last_latitude IS NOT NULL AND last_longitude IS NOT NULL AND id != :user_id");
-                $stmt->execute(['user_id' => $user_id]);
-                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                $nearby_users = [];
-                foreach ($users as $userItem) {
-                    $distance = calculateDistance($latitud, $longitud, $userItem['last_latitude'], $userItem['last_longitude']);
-                    if ($distance <= 5) {
-                        $nearby_users[] = $userItem['id'];
-                    }
-                }
-                if (!empty($nearby_users)) {
-                    $pusher->trigger('alert-channel', 'new-alert', $alert, ['user_ids' => $nearby_users]);
+            $stmt = $conn->prepare("SELECT fcm_token FROM users WHERE fcm_token IS NOT NULL AND id != :user_id AND last_latitude IS NOT NULL AND last_longitude IS NOT NULL");
+            $stmt->execute(['user_id' => $user_id]);
+            $tokens = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $distance = calculateDistance($latitud, $longitud, $row['last_latitude'], $row['last_longitude']);
+                if ($distance <= 5) {
+                    $tokens[] = $row['fcm_token'];
                 }
             }
-            die(json_encode(['success' => true, 'alert' => $alert]));
+            die(json_encode(['success' => true, 'tokens' => $tokens]));
+            break;
+
+        case 'saveAlert':
+            $alert = $data['alert'] ?? [];
+            if (empty($alert)) die(json_encode(['success' => false, 'error' => 'Faltan datos']));
+            $stmt = $conn->prepare("INSERT INTO alerts (tipo, latitud, longitud, user_id) VALUES (:tipo, :latitud, :longitud, :user_id)");
+            $stmt->execute([
+                'tipo' => $alert['tipo'],
+                'latitud' => $alert['latitud'],
+                'longitud' => $alert['longitud'],
+                'user_id' => $alert['user_id']
+            ]);
+            die(json_encode(['success' => true]));
+            break;
+
+        case 'registrarAlerta':
+            // Este case ya no se usa (se maneja en Firebase Function)
+            die(json_encode(['success' => false, 'error' => 'Usar Cloud Function']));
             break;
 
         case 'obtenerAlertasCercanas':
