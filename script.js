@@ -25,7 +25,7 @@
             return;
         }
         if (map) {
-            console.log('Mapa ya inicializado, no se vuelve a llamar initMap');
+            console.log('Mapa ya inicializado, solo actualizo vista');
             map.setView([lat, lng], 13);
             return;
         }
@@ -50,16 +50,7 @@
                     userMarker.setLatLng([latitude, longitude]);
                 }
                 fetchNearbyAlerts(latitude, longitude, 5);
-                const userId = localStorage.getItem('user_id');
-                if (userId) {
-                    fetch('https://alerta-vecinal.onrender.com/functions.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'updateLocation', user_id: userId, latitud: latitude, longitud: longitude })
-                    }).then(response => response.json()).then(result => {
-                        if (result.success) console.log('Ubicación actualizada en servidor');
-                    });
-                }
+                // No enviamos ubicación al servidor (no hay usuario)
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
@@ -73,10 +64,8 @@
         channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
-            const localUserId = localStorage.getItem('user_id');
-            if (!localUserId) return console.log('No hay user_id local, ignorando alerta');
             const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
-            if (localUserId !== data.user_id && notificationsEnabled && userMarker) {
+            if (notificationsEnabled && userMarker) {
                 const userLocation = userMarker.getLatLng();
                 const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
                 if (distance <= 5) {
@@ -85,7 +74,7 @@
                     playAlertSound();
                 }
             } else {
-                addAlertToMapWithAnimation(data);
+                addAlertToMapWithAnimation(data); // Todos ven las alertas
             }
             updateAlertCount();
         });
@@ -105,20 +94,23 @@
     }
 
     async function sendAlert(tipo, latitud, longitud) {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) return alert("Debes iniciar sesión.");
+        const userId = 'anonymous-' + Date.now(); // ID temporal para pruebas
+
         try {
             const response = await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/registrarAlerta', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tipo, latitud, longitud, user_id: userId })
             });
+
+            if (!response.ok) throw new Error('Respuesta no OK: ' + response.status);
+
             const result = await response.json();
             if (result.success) {
                 console.log('Alerta enviada con éxito:', result.alert);
                 if (result.alert && result.alert.latitud && result.alert.longitud) {
                     addAlertToMapWithAnimation(result.alert);
-                    addRadarAnimation(latitud, longitud, 5);
+                    addRadarAnimation(latitud, longitud, 1.25); // 2.5 km diámetro
                 } else {
                     console.warn('Alerta enviada, pero alert incompleto');
                 }
@@ -143,48 +135,44 @@
                     <b>Tipo:</b> ${alert.tipo}<br>
                     <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
                     <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-                    ${localStorage.getItem('user_id') == alert.user_id ? `<button id="delete-btn-${alert.id}">Eliminar</button>` : ''}
                 </div>
             </div>
         `;
         marker.bindPopup(popupContent).openPopup();
         marker.on('popupopen', () => {
-            document.getElementById(`delete-btn-${alert.id}`)?.addEventListener('click', () => deleteAlert(alert.id));
             setTimeout(() => marker.closePopup(), 86400000);
         });
     }
 
-function addRadarAnimation(latitud, longitud, radius) {
-    let currentRadius = 0; // Empieza desde casi 0 (pequeña)
-    const maxRadius = radius * 1000; // 2.5 km de diámetro = 1250 metros de radio
-    const radarCircle = L.circle([latitud, longitud], {
-        color: '#ffff00',
-        fillColor: '#ffff00',
-        fillOpacity: 0.45,
-        radius: currentRadius,
-        weight: 2.5
-    }).addTo(map);
+    function addRadarAnimation(latitud, longitud, maxRadius) {
+        let currentRadius = 0;
+        const radarCircle = L.circle([latitud, longitud], {
+            color: '#ffff00',
+            fillColor: '#ffff00',
+            fillOpacity: 0.45,
+            radius: currentRadius,
+            weight: 2.5
+        }).addTo(map);
 
-    const animation = setInterval(() => {
-        currentRadius += 65; // Crece de a 65 metros por paso (un poco más rápido)
-        if (currentRadius >= maxRadius) {
-            clearInterval(animation);
-            // Desvanece suavemente después de llegar al máximo
-            let opacity = 0.45;
-            const fadeOut = setInterval(() => {
-                opacity -= 0.025;
-                if (opacity <= 0) {
-                    clearInterval(fadeOut);
-                    map.removeLayer(radarCircle);
-                } else {
-                    radarCircle.setStyle({ fillOpacity: opacity });
-                }
-            }, 80); // Fade out suave
-        } else {
-            radarCircle.setRadius(currentRadius);
-        }
-    }, 65); // Cada 65 ms → crecimiento fluido y profesional
-}
+        const animation = setInterval(() => {
+            currentRadius += 65;
+            if (currentRadius >= maxRadius * 1000) {
+                clearInterval(animation);
+                let opacity = 0.45;
+                const fadeOut = setInterval(() => {
+                    opacity -= 0.025;
+                    if (opacity <= 0) {
+                        clearInterval(fadeOut);
+                        map.removeLayer(radarCircle);
+                    } else {
+                        radarCircle.setStyle({ fillOpacity: opacity });
+                    }
+                }, 80);
+            } else {
+                radarCircle.setRadius(currentRadius);
+            }
+        }, 65);
+    }
 
     async function fetchNearbyAlerts(latitud, longitud, radio) {
         const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
@@ -194,66 +182,6 @@ function addRadarAnimation(latitud, longitud, radius) {
         });
         const result = await response.json();
         if (result.success) result.alerts.forEach(addAlertToMapWithAnimation);
-    }
-
-    async function deleteAlert(alertId) {
-        const userId = localStorage.getItem('user_id');
-        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'eliminarAlerta', id: alertId, user_id: userId })
-        });
-        const result = await response.json();
-        if (result.success) location.reload();
-        else alert("Error: " + result.error);
-    }
-
-    async function toggleAlertHistory() {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) return alert("Debes iniciar sesión.");
-        const historyBtn = document.getElementById('show-history-btn');
-        if (!historyVisible) {
-            const fechaInicio = document.getElementById('history-start')?.value;
-            const fechaFin = document.getElementById('history-end')?.value;
-            const body = { action: 'obtenerHistorialAlertas' };
-            if (fechaInicio && fechaFin) {
-                body.fechaInicio = fechaInicio + ' 00:00:00';
-                body.fechaFin = fechaFin + ' 23:59:59';
-            }
-            const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const result = await response.json();
-            if (result.success) {
-                historyMarkers.forEach(marker => map.removeLayer(marker));
-                historyMarkers = [];
-                result.alerts.forEach(alert => {
-                    const marker = L.marker([alert.latitud, alert.longitud], {
-                        icon: L.icon({ iconUrl: '/alert-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] })
-                    }).addTo(map);
-                    marker.bindPopup(`
-                        <b>Tipo:</b> ${alert.tipo}<br>
-                        <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-                        <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-                        <b>Visible:</b> ${alert.visible ? 'Sí' : 'No'}
-                    `);
-                    historyMarkers.push(marker);
-                });
-                historyBtn.textContent = 'Ocultar Historial';
-                historyVisible = true;
-                document.getElementById('history-start').disabled = true;
-                document.getElementById('history-end').disabled = false;
-            }
-        } else {
-            historyMarkers.forEach(marker => map.removeLayer(marker));
-            historyMarkers = [];
-            historyBtn.textContent = 'Ver Historial';
-            historyVisible = false;
-            document.getElementById('history-start').disabled = false;
-            document.getElementById('history-end').disabled = false;
-        }
     }
 
     function showNotification(alert) {
@@ -318,121 +246,14 @@ function addRadarAnimation(latitud, longitud, radius) {
     }
 
     if (verifyAction === 'verify' && verifyToken) {
-        fetch(`https://alerta-vecinal.onrender.com/functions.php?action=verify&token=${verifyToken}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success && result.session_token) {
-                fetch('https://alerta-vecinal.onrender.com/functions.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'auto_login', session_token: result.session_token })
-                })
-                .then(response => response.json())
-                .then(autoLoginResult => {
-                    if (autoLoginResult.success) {
-                        localStorage.setItem('user_id', autoLoginResult.user_id);
-                        document.querySelector('.auth-form').style.display = 'none';
-                        document.getElementById('logout-btn').style.display = 'block';
-                        window.history.replaceState({}, document.title, '/');
-                        initMap(); // Fuerza mapa después de verificación
-                    } else {
-                        alert('Error en auto-login: ' + autoLoginResult.error);
-                    }
-                });
-            } else {
-                alert('Error en verificación: ' + result.error);
-            }
-        });
+        console.log('Intento de verificación ignorado (sin login)');
     } else if (sessionToken) {
-        fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'auto_login', session_token: sessionToken })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                localStorage.setItem('user_id', result.user_id);
-                document.querySelector('.auth-form').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'block';
-                window.history.replaceState({}, document.title, '/');
-                initMap(); // Fuerza mapa después de auto-login
-            } else {
-                alert('Error en auto-login: ' + result.error);
-            }
-        });
+        console.log('Session token ignorado (sin login)');
     }
-
-    const userId = localStorage.getItem('user_id');
-    const registerFormSection = document.querySelector('.auth-form');
-    const logoutBtn = document.getElementById('logout-btn');
 
     if (!map) {
         initMap();
     }
-
-    if (userId) {
-        registerFormSection.style.display = 'none';
-        logoutBtn.style.display = 'block';
-    } else {
-        registerFormSection.style.display = 'block';
-        logoutBtn.style.display = 'none';
-    }
-
-    document.getElementById('register-form')?.addEventListener('submit', async e => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const nombre = document.getElementById('nombre').value;
-        const apellido = document.getElementById('apellido').value;
-        const password = document.getElementById('password').value;
-        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'register', email, nombre, apellido, password })
-        });
-        const result = await response.json();
-        alert(result.success ? result.message : "Error: " + result.error);
-    });
-
-    document.getElementById('login-btn')?.addEventListener('click', async () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'login', email, password })
-        });
-        const result = await response.json();
-        if (result.success) {
-            localStorage.setItem('user_id', result.user_id);
-            document.querySelector('.auth-form').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'block';
-            console.log('Login exitoso, user_id:', result.user_id);
-            initMap(); // Fuerza mapa después de login
-        } else {
-            alert("Error: " + result.error);
-        }
-    });
-
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'logout' })
-        });
-        const result = await response.json();
-        if (result.success) {
-            localStorage.removeItem('user_id');
-            document.querySelector('.auth-form').style.display = 'block';
-            document.getElementById('logout-btn').style.display = 'none';
-            if (map) map.remove();
-            map = null;
-            initMap(); // Fuerza reinicio del mapa después de logout
-        }
-    });
 
     document.getElementById('send-alert-form')?.addEventListener('submit', async e => {
         e.preventDefault();
@@ -461,42 +282,21 @@ function addRadarAnimation(latitud, longitud, radius) {
             vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
             serviceWorkerRegistration: await navigator.serviceWorker.ready
           });
-          const userId = localStorage.getItem('user_id');
-          if (token && userId) {
-            fetch('https://alerta-vecinal.onrender.com/functions.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'saveFcmToken', user_id: userId, token })
-            });
-            console.log('✅ Token FCM guardado correctamente');
-          }
+          // Guardamos el token en Firestore directamente (sin backend PHP)
+          await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/saveToken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+          });
+          console.log('✅ Token FCM guardado correctamente');
         }
       } catch (err) {
         console.error('Error initFCM:', err);
       }
     }
 
-    // Llamar después de login exitoso
-    document.getElementById('login-btn')?.addEventListener('click', async () => {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const response = await fetch('https://alerta-vecinal.onrender.com/functions.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', email, password })
-      });
-      const result = await response.json();
-      if (result.success) {
-        localStorage.setItem('user_id', result.user_id);
-        document.querySelector('.auth-form').style.display = 'none';
-        document.getElementById('logout-btn').style.display = 'block';
-        console.log('Login exitoso, user_id:', result.user_id);
-        initFCM();
-        initMap(); // Fuerza mapa después de login
-      } else {
-        alert("Error: " + result.error);
-      }
-    });
+    // Llamar initFCM al cargar (sin login)
+    initFCM();
 
     // Alerta en primer plano
     messaging.onMessage((payload) => {
@@ -505,31 +305,8 @@ function addRadarAnimation(latitud, longitud, radius) {
       playAlertSound();
       addAlertToMapWithAnimation(data);
       showNotification(data);
-      alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || ''} ${data.apellido || ''}`);
+      alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || 'Anónimo'}`);
     });
-
-    // Login automático para pruebas (comentar cuando termines)
-    if (!localStorage.getItem('user_id')) {
-      const testEmail = 'prueba@test.com';
-      const testPassword = '123456';
-      fetch('https://alerta-vecinal.onrender.com/functions.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', email: testEmail, password: testPassword })
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          localStorage.setItem('user_id', result.user_id);
-          document.querySelector('.auth-form').style.display = 'none';
-          document.getElementById('logout-btn').style.display = 'block';
-          console.log('Login automático exitoso, user_id:', result.user_id);
-          initFCM();
-          initMap();
-        }
-      })
-      .catch(err => console.error('Login automático falló:', err));
-    }
 
 })();
 console.log('script.js cargado completamente');
