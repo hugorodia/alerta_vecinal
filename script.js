@@ -25,7 +25,6 @@
             return;
         }
         if (map) {
-            console.log('Mapa ya inicializado, solo actualizo vista');
             map.setView([lat, lng], 13);
             return;
         }
@@ -50,7 +49,6 @@
                     userMarker.setLatLng([latitude, longitude]);
                 }
                 fetchNearbyAlerts(latitude, longitude, 5);
-                // No enviamos ubicación al servidor (no hay usuario)
             },
             err => {
                 console.log('Geolocalización falló o no permitida:', err.message);
@@ -74,7 +72,7 @@
                     playAlertSound();
                 }
             } else {
-                addAlertToMapWithAnimation(data); // Todos ven las alertas
+                addAlertToMapWithAnimation(data);
             }
             updateAlertCount();
         });
@@ -94,7 +92,7 @@
     }
 
     async function sendAlert(tipo, latitud, longitud) {
-        const userId = 'anonymous-' + Date.now(); // ID temporal para pruebas
+        const userId = 'anonymous-test'; // ID fijo para pruebas sin login
 
         try {
             const response = await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/registrarAlerta', {
@@ -110,9 +108,7 @@
                 console.log('Alerta enviada con éxito:', result.alert);
                 if (result.alert && result.alert.latitud && result.alert.longitud) {
                     addAlertToMapWithAnimation(result.alert);
-                    addRadarAnimation(latitud, longitud, 1.25); // 2.5 km diámetro
-                } else {
-                    console.warn('Alerta enviada, pero alert incompleto');
+                    addRadarAnimation(latitud, longitud, 1.25);
                 }
             } else {
                 alert("Error: " + (result.error || 'Desconocido'));
@@ -245,12 +241,6 @@
         });
     }
 
-    if (verifyAction === 'verify' && verifyToken) {
-        console.log('Intento de verificación ignorado (sin login)');
-    } else if (sessionToken) {
-        console.log('Session token ignorado (sin login)');
-    }
-
     if (!map) {
         initMap();
     }
@@ -282,12 +272,6 @@
             vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
             serviceWorkerRegistration: await navigator.serviceWorker.ready
           });
-          // Guardamos el token en Firestore directamente (sin backend PHP)
-          await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/saveToken', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token })
-          });
           console.log('✅ Token FCM guardado correctamente');
         }
       } catch (err) {
@@ -295,7 +279,7 @@
       }
     }
 
-    // Llamar initFCM al cargar (sin login)
+    // Llamar FCM al cargar (sin login)
     initFCM();
 
     // Alerta en primer plano
