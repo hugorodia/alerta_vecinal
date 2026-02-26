@@ -92,7 +92,7 @@
     }
 
     async function sendAlert(tipo, latitud, longitud) {
-        const userId = 'anonymous-test'; // ID fijo para pruebas sin login
+        const userId = 'anonymous-test'; // ID fijo sin login
 
         try {
             const response = await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/registrarAlerta', {
@@ -224,12 +224,6 @@
         if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionToken = urlParams.get('session_token');
-    const verifyAction = urlParams.get('action');
-    const verifyToken = urlParams.get('token');
-    console.log('URL actual:', window.location.href);
-
     const enableNotificationsCheckbox = document.getElementById('enable-notifications');
     if (enableNotificationsCheckbox) {
         const savedNotificationState = localStorage.getItem('enableNotifications');
@@ -272,17 +266,15 @@
             vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
             serviceWorkerRegistration: await navigator.serviceWorker.ready
           });
-          console.log('✅ Token FCM guardado correctamente');
+          console.log('✅ Token FCM guardado correctamente:', token);
         }
       } catch (err) {
         console.error('Error initFCM:', err);
       }
     }
 
-    // Llamar FCM al cargar (sin login)
     initFCM();
 
-    // Alerta en primer plano
     messaging.onMessage((payload) => {
       console.log('✅ Alerta recibida en primer plano:', payload);
       const data = payload.data || payload.notification || {};
