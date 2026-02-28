@@ -2,7 +2,7 @@
     "use strict";
     console.log('DOM cargado, inicializando...');
 
-    const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
+    const OPEN_CAGE_API_KEY = 'AIzaSyAK5XRfTHMKVEsk-SqJxQXbpv5vdN2XPJ0';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
     const alertSound = new Audio('/public/alert.wav');
 
@@ -224,9 +224,9 @@
         if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
-    // Dummy function para evitar error de toggleAlertHistory
+    // Dummy para evitar error
     function toggleAlertHistory() {
-        alert("Historial no disponible en modo prueba sin login");
+        alert("Historial no disponible en modo prueba");
     }
 
     const enableNotificationsCheckbox = document.getElementById('enable-notifications');
@@ -263,15 +263,20 @@
 
     async function initFCM() {
       try {
+        console.log('Iniciando FCM...');
         if ('Notification' in window && Notification.permission === 'default') {
+          console.log('Pidiendo permiso de notificaciones...');
           await Notification.requestPermission();
         }
         if (Notification.permission === 'granted') {
+          console.log('Permiso concedido, generando token...');
           const token = await messaging.getToken({
             vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
             serviceWorkerRegistration: await navigator.serviceWorker.ready
           });
           console.log('✅ Token FCM guardado correctamente:', token);
+        } else {
+          console.log('Permiso de notificaciones denegado');
         }
       } catch (err) {
         console.error('Error initFCM:', err);
