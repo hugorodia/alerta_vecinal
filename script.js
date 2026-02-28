@@ -224,6 +224,11 @@
         if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
+    // Dummy function para evitar error de toggleAlertHistory
+    function toggleAlertHistory() {
+        alert("Historial no disponible en modo prueba sin login");
+    }
+
     const enableNotificationsCheckbox = document.getElementById('enable-notifications');
     if (enableNotificationsCheckbox) {
         const savedNotificationState = localStorage.getItem('enableNotifications');
