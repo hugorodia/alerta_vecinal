@@ -92,7 +92,7 @@
     }
 
     async function sendAlert(tipo, latitud, longitud) {
-        const userId = 'anonymous-test'; // ID fijo sin login
+        const userId = 'anonymous-test';
 
         try {
             const response = await fetch('https://us-central1-alerta-vecinal-a8bef.cloudfunctions.net/registrarAlerta', {
