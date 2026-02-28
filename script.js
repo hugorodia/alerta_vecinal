@@ -2,7 +2,20 @@
     "use strict";
     console.log('DOM cargado, inicializando...');
 
-    const OPEN_CAGE_API_KEY = 'AIzaSyAK5XRfTHMKVEsk-SqJxQXbpv5vdN2XPJ0';
+    // === PEGÁ AQUÍ TU firebaseConfig COMPLETO ===
+   const firebaseConfig = {
+  apiKey: "AIzaSyAK5XRfTHMKVEsk-SqJxQXbpv5vdN2XPJ0",
+  authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
+  projectId: "alerta-vecinal-a8bef",
+  storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
+  messagingSenderId: "479895936339",
+  appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
+};
+    // === FIN DEL firebaseConfig ===
+
+    firebase.initializeApp(firebaseConfig);
+
+    const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
     const alertSound = new Audio('/public/alert.wav');
 
