@@ -4,7 +4,7 @@
 
     // === TU CONFIGURACIÓN DE FIREBASE (nueva clave API) ===
     const firebaseConfig = {
-      apiKey: "AIzaSyAK5XRfTHMKVEsk-SqJxQXbpv5vdN2XPJ0",
+      apiKey: "AIzaSyBQv79g42AaNbTcAz64YtyY2905uTh_9dE",
       authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
       projectId: "alerta-vecinal-a8bef",
       storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
