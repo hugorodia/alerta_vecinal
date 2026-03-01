@@ -12,7 +12,7 @@
       appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
     };
     if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+      //firebase.initializeApp(firebaseConfig);
     }
     // === FIN DE LA CONFIGURACIÓN ===
 
@@ -297,7 +297,7 @@
       }
     }
 
-    initFCM();
+    //initFCM();
 
     messaging.onMessage((payload) => {
       console.log('✅ Alerta recibida en primer plano:', payload);
