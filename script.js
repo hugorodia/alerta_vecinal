@@ -2,20 +2,6 @@
     "use strict";
     console.log('DOM cargado, inicializando...');
 
-    // === TU CONFIGURACIÓN DE FIREBASE (nueva clave API) ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyBQv79g42AaNbTcAz64YtyY2905uTh_9dE",
-      authDomain: "alerta-vecinal-a8bef.firebaseapp.com",
-      projectId: "alerta-vecinal-a8bef",
-      storageBucket: "alerta-vecinal-a8bef.firebasestorage.app",
-      messagingSenderId: "479895936339",
-      appId: "1:479895936339:web:e8c1abb4e4d345fb91d5a6"
-    };
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    // === FIN DE LA CONFIGURACIÓN ===
-
     const OPEN_CAGE_API_KEY = '152807e980154a4ab1ae6c9cdc7a4953';
     let map, userMarker, historyMarkers = [], historyVisible = false, alertCount = 0, pusher, channel;
     const alertSound = new Audio('/public/alert.wav');
@@ -76,22 +62,10 @@
         channel = pusher.subscribe('alert-channel');
         channel.bind('new-alert', data => {
             console.log('Alerta recibida:', data);
-            const notificationsEnabled = document.getElementById('enable-notifications')?.checked || false;
-            if (notificationsEnabled && userMarker) {
-                const userLocation = userMarker.getLatLng();
-                const distance = calculateDistance(userLocation.lat, userLocation.lng, data.latitud, data.longitud);
-                if (distance <= 5) {
-                    addAlertToMapWithAnimation(data);
-                    showNotification(data);
-                    playAlertSound();
-                }
-            } else {
-                addAlertToMapWithAnimation(data);
-            }
+            addAlertToMapWithAnimation(data);
             updateAlertCount();
         });
         pusher.connection.bind('connected', () => console.log('Conectado a Pusher'));
-        pusher.connection.bind('disconnected', () => console.log('Desconectado de Pusher'));
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -149,9 +123,6 @@
             </div>
         `;
         marker.bindPopup(popupContent).openPopup();
-        marker.on('popupopen', () => {
-            setTimeout(() => marker.closePopup(), 86400000);
-        });
     }
 
     function addRadarAnimation(latitud, longitud, maxRadius) {
@@ -194,34 +165,6 @@
         if (result.success) result.alerts.forEach(addAlertToMapWithAnimation);
     }
 
-    function showNotification(alert) {
-        console.log('Mostrando notificación para alerta:', alert);
-        const notificationDiv = document.createElement('div');
-        notificationDiv.id = `notification-${alert.id}`;
-        notificationDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            border: 1px solid #ccc;
-            padding: 10px;
-            z-index: 1000;
-            max-width: 300px;
-        `;
-        notificationDiv.innerHTML = `
-            <b>Nueva Alerta</b><br>
-            <b>Tipo:</b> ${alert.tipo}<br>
-            <b>Fecha:</b> ${new Date(alert.fecha).toLocaleString()}<br>
-            <b>Enviado por:</b> ${alert.nombre} ${alert.apellido}<br>
-            <video src="/alert-animation.mp4" autoplay style="width: 100%; max-width: 200px;"></video>
-            <button onclick="this.parentElement.remove()">Cerrar</button>
-        `;
-        document.body.appendChild(notificationDiv);
-        setTimeout(() => {
-            if (notificationDiv) notificationDiv.remove();
-        }, 86400000);
-    }
-
     function playAlertSound() {
         console.log('Intentando reproducir alert.wav');
         alertSound.play()
@@ -238,20 +181,8 @@
         if (!document.getElementById('alert-counter')) document.body.appendChild(counter);
     }
 
-    // Dummy para evitar error
     function toggleAlertHistory() {
         alert("Historial no disponible en modo prueba");
-    }
-
-    const enableNotificationsCheckbox = document.getElementById('enable-notifications');
-    if (enableNotificationsCheckbox) {
-        const savedNotificationState = localStorage.getItem('enableNotifications');
-        if (savedNotificationState !== null) {
-            enableNotificationsCheckbox.checked = savedNotificationState === 'true';
-        }
-        enableNotificationsCheckbox.addEventListener('change', () => {
-            localStorage.setItem('enableNotifications', enableNotificationsCheckbox.checked);
-        });
     }
 
     if (!map) {
@@ -271,42 +202,6 @@
     });
 
     document.getElementById('show-history-btn')?.addEventListener('click', toggleAlertHistory);
-
-    // ================== FCM - ALERTA VECINAL ==================
-    const messaging = firebase.messaging();
-
-    async function initFCM() {
-      try {
-        console.log('Iniciando FCM...');
-        if ('Notification' in window && Notification.permission === 'default') {
-          console.log('Pidiendo permiso de notificaciones...');
-          await Notification.requestPermission();
-        }
-        if (Notification.permission === 'granted') {
-          console.log('Permiso concedido, generando token...');
-          const token = await messaging.getToken({
-            vapidKey: 'BKi0PePqfD_mCV584TgC0Yb5llI9bcHe799ESxaNaQC2Z9hyFmQcDzrnsdN3hwklAlhqZjIS8kCWBE19aIKJ-so',
-            serviceWorkerRegistration: await navigator.serviceWorker.ready
-          });
-          console.log('✅ Token FCM guardado correctamente:', token);
-        } else {
-          console.log('Permiso de notificaciones denegado');
-        }
-      } catch (err) {
-        console.error('Error initFCM:', err);
-      }
-    }
-
-    initFCM();
-
-    messaging.onMessage((payload) => {
-      console.log('✅ Alerta recibida en primer plano:', payload);
-      const data = payload.data || payload.notification || {};
-      playAlertSound();
-      addAlertToMapWithAnimation(data);
-      showNotification(data);
-      alert(`🚨 ¡ALERTA INMEDIATA!\n\nTipo: ${data.tipo}\nEnviado por: ${data.nombre || 'Anónimo'}`);
-    });
 
 })();
 console.log('script.js cargado completamente');
